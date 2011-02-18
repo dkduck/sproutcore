@@ -72,6 +72,15 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   query: null,
 
   /**
+   If YES the RecordArray will update itself when new changes come in from the store,
+   if NO updating will not take place.
+   Don't set this property directly but use the enable() and disable() methods.
+
+   @property {Boolean}
+   */
+  enabled: YES,
+
+  /**
    * Set of nested RecordArrays.
    * A RecordArray will automatically be registered as nestedRecordArray when created using
    * a scoped query (like query.from(...).and(...).without(...))
@@ -364,6 +373,29 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     if (nestedRecordArrays) nestedRecordArrays.remove(recordArray);
     return this;
   },
+
+  /**
+    Enables RecordArray flushing.
+    Flushes pending changes immediately, if the RecordArray was in a disabled state before.
+
+    @returns {SC.RecordArray} receiver
+  */
+  enable: function() {
+    if (this.get('enabled')) return this;
+    this.set('enabled', YES);
+    this.flushFromLeafs();
+    return this;
+  },
+
+  /**
+    Disables RecordArray flushing.
+
+    @returns {SC.RecordArray} receiver
+  */
+  disable: function() {
+    this.set('enabled', NO);
+    return this;
+  },
   
   // ..........................................................
   // STORE CALLBACKS
@@ -545,6 +577,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @returns {SC.RecordArray} receiver
   */
   flush: function(_flush) {
+    if (!this.get('enabled')) return this;
     // Are we already inside a flush?  If so, then don't do it again, to avoid
     // never-ending recursive flush calls.  Instead, we'll simply mark
     // ourselves as needing a flush again when we're done.
