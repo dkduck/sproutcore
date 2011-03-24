@@ -91,7 +91,7 @@ SC.Event = function(originalEvent) {
       // Check Chrome first since it also responds to safari
       if (!SC.browser.chrome) {
         // Scrolling in Safari 5.0.1, which is huge for some reason
-        if (version >= 533.17 && version <= 533.19) {
+        if (version >= 533.17 && version <= 533.20) {
           deltaMultiplier = 0.004;
 
         // Scrolling in Safari 5.0
