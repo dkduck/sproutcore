@@ -700,7 +700,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
 
       var differenceSet = this._findDifferences(oldStoreKeys, storeKeys);
       if (differenceSet){
-        this.set('storeKeys', storeKeys); // replace content
+        this.storeKeys = storeKeys; // replace content without triggering the observer
         // notify all nested RecordArrays of the changes in this RecordArray
         var nestedRecordArrays = this.get('nestedRecordArrays');
         if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', relevantChangedStoreKeys);
@@ -820,7 +820,11 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   /** @private */
   init: function() {
     sc_super();
-  }
+  },
+
+  _storeKeysDidChange: function() {
+    this.enumerableContentDidChange();
+  }.observes('storeKeys')
   
 });
 
