@@ -585,7 +585,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       storeKeys = SC.Query.orderStoreKeys(storeKeys, query, store);
       var differenceSet = this._findDifferences(oldStoreKeys, storeKeys);
       if (differenceSet) {
-        this.set('storeKeys', SC.clone(storeKeys)); // replace content
+        this.storeKeys = SC.clone(storeKeys); // replace content without triggering observers
         // propagate record array changes
         this._notifyStoreKeyChanges(oldStoreKeys, storeKeys, differenceSet);
       }
@@ -701,8 +701,13 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   /** @private */
   init: function() {
     sc_super();
-  }
-  
+  },
+
+  _storeKeysDidChange: function() {
+    this.enumerableContentDidChange();
+  }.observes('storeKeys')
+
+
 });
 
 SC.RecordArray.mixin({  
