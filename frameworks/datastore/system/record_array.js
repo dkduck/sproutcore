@@ -698,11 +698,14 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
           storeKeys = storeKeys ? storeKeys.copy() : [];
       }
 
-      if (SC.compare(oldStoreKeys, storeKeys) !== 0){
+      var differenceSet = this._findDifferences(oldStoreKeys, storeKeys);
+      if (differenceSet){
         this.set('storeKeys', storeKeys); // replace content
         // notify all nested RecordArrays of the changes in this RecordArray
         var nestedRecordArrays = this.get('nestedRecordArrays');
         if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', relevantChangedStoreKeys);
+        // propagate record array changes
+        this._notifyStoreKeyChanges(oldStoreKeys, storeKeys, differenceSet);
       }
 
     }
@@ -710,6 +713,59 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     this._insideFlush = NO;
     return this;
   },
+
+  /**
+    Finds first index where the two storeKey arrays deviate from each other.
+    Returns -1 if they are identical.
+
+    @param {SC.Array} old store keys
+    @param {SC.Array} new store keys
+    @returns {SC.IndexSet} Changed index range or null if identical
+  */
+  _findDifferences: function(oldStoreKeys, storeKeys) {
+    if (!oldStoreKeys) {
+      if (!storeKeys) return null;
+      return SC.IndexSet.create(0, storeKeys.length);
+    }
+    var oldLen = oldStoreKeys.length,
+        newLen = storeKeys.length,
+        maxLen = oldLen > newLen ? oldLen : newLen,
+        startIdx = 0,
+        endIdx = newLen - 1;
+
+    while (oldStoreKeys[startIdx] == storeKeys[startIdx] && startIdx < newLen) {
+      startIdx += 1;
+    }
+    while (oldStoreKeys[endIdx] == storeKeys[endIdx] && endIdx > startIdx) {
+      endIdx -= 1;
+    }
+    if (startIdx < maxLen) return SC.IndexSet.create(startIdx, endIdx - startIdx + 1);
+    return null;
+  },
+
+  /**
+    Clears the cache for the changed portion of the record array and calls
+    enumerableContentDidChange() with the changed range.
+
+    @param {SC.Array} old store keys
+    @param {SC.Array} new store keys
+    @param {Number} Index of first difference between the store key arrays
+  */
+  _notifyStoreKeyChanges: function(oldStoreKeys, storeKeys, differenceSet) {
+    var newLen = storeKeys.length,
+        oldLen = oldStoreKeys ? oldStoreKeys.length : 0,
+        firstDifference = differenceSet.get('min'),
+        recordCache = this._scra_records;
+
+    if (recordCache) {
+      differenceSet.forEach(function(index) {
+        recordCache[index] = null;
+      });
+      recordCache.length = newLen;
+    }
+    this.enumerableContentDidChange(firstDifference, differenceSet.get('length'), newLen - oldLen);
+  },
+
 
   /**
     Set to YES when the query is dirty and needs to update its storeKeys 
@@ -761,44 +817,9 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   // INTERNAL SUPPORT
   // 
   
-  /** @private 
-    Invoked whenever the storeKeys array changes.  Observes changes.
-  */
-  _storeKeysDidChange: function() {
-    var storeKeys = this.get('storeKeys');
-    
-    var prev = this._prevStoreKeys, 
-        f    = this._storeKeysContentDidChange;
-    
-    if (storeKeys === prev) return; // nothing to do
-    
-    if (prev) prev.removeObserver('[]', this, f);
-    this._prevStoreKeys = storeKeys;
-    if (storeKeys) storeKeys.addObserver('[]', this, f);
-    
-    var rev = (storeKeys) ? storeKeys.propertyRevision : -1 ;
-    if (prev || (storeKeys && storeKeys.length > 0)) this._storeKeysContentDidChange(storeKeys, '[]', storeKeys, rev);
-    
-  }.observes('storeKeys'),
-  
-  /** @private
-    Invoked whenever the content of the storeKeys array changes.  This will
-    dump any cached record lookup and then notify that the enumerable content
-    has changed.
-  */
-  _storeKeysContentDidChange: function(target, key, value, rev) {
-    if (this._scra_records) this._scra_records.length=0 ; // clear cache
-    
-    this.beginPropertyChanges()
-      .notifyPropertyChange('length')
-      .enumerableContentDidChange()
-    .endPropertyChanges();
-  },
-  
   /** @private */
   init: function() {
     sc_super();
-    this._storeKeysDidChange();
   }
   
 });
