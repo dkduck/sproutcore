@@ -325,13 +325,12 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
     @returns {void}
   */
   observerContentDidChange: function(start, amt, delta, doNotDestroy) {
-    
+
     var expandedStartIndex = this.expandChildIndex(start);
 
     // clear caches
     if (doNotDestroy !== YES) this.invalidateBranchObserversAt(start, amt, delta);
-    if (this._objectAtCache) this._objectAtCache.length = expandedStartIndex;
-    if (this._outlineLevelCache) this._outlineLevelCache.length = expandedStartIndex;
+    this._objectAtCache = this._outlineLevelCache = null;
     this._disclosureStateCache = null;
     this._contentGroupIndexes = NO;
     this.notifyPropertyChange('branchIndexes');
