@@ -891,16 +891,20 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     // if a RecordArray was not found, then create one and also add it to the
     // list of record arrays to update.
     if (!ret && createIfNeeded) {
-      cache[key] = ret = SC.RecordArray.create({ store: this, query: query });
-
-      ra = this.get('recordArrays');
-      if (!ra) this.set('recordArrays', ra = SC.Set.create());
-      ra.add(ret);
-
-      if (refreshIfNew) this.refreshQuery(query);
+      ret = SC.RecordArray.create({ store: this, query: query });
+      if (query.scope) {
+        ret.registerWithParents();
+      } else {
+        ra = this.get('recordArrays');
+        if (!ra) this.set('recordArrays', ra = SC.Set.create());
+        ra.add(ret);
+      }
+      cache[key] = ret;
+      if (refreshIfNew) {
+        this.refreshQuery(query);
+        this.flush();
+      }
     }
-    
-    this.flush();
     return ret ;
   },
   
@@ -976,9 +980,9 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
   },
   
   /** @private 
-    Will ask all record arrays that have been returned from `findAll`
-    with an `SC.Query` to check their arrays with the new `storeKey`s
-    
+    Will ask all record arrays that have been returned from find
+    with an SC.Query to check their arrays with the new storeKeys
+
     @param {SC.IndexSet} storeKeys set of storeKeys that changed
     @param {SC.Set} recordTypes
     @returns {SC.Store} receiver
@@ -987,10 +991,10 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     var recordArrays = this.get('recordArrays');
     if (!recordArrays) return this;
 
-    recordArrays.forEach(function(recArray) {
-      if (recArray) recArray.storeDidChangeStoreKeys(storeKeys, recordTypes);
-    }, this);
-    
+    // first inform all RecordArrays about the changes ...
+    recordArrays.invoke('storeDidChangeStoreKeys', storeKeys, recordTypes);
+    // and then flush them all
+    recordArrays.invoke('flushFromLeafs');
     return this ;
   },
   
