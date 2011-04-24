@@ -835,7 +835,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     @param {String} id the id to load
     @returns {SC.Record} record instance or null
   */
-  find: function(recordType, id) {
+  find: function(recordType, id, onlyLocal) {
     
     // if recordType is passed as string, find object
     if (SC.typeOf(recordType)===SC.T_STRING) {
@@ -852,7 +852,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
       
     // handle finding a single record
     } else {
-      return this._findRecord(recordType, id);
+      return this._findRecord(recordType, id, onlyLocal);
     }
   },
 
@@ -880,16 +880,12 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
   
   
   _findQuery: function(query, createIfNeeded, refreshIfNew) {
-
-    // lookup the local RecordArray for this query.
-    var cache = this._scst_recordArraysByQuery, 
+    var cache = this._scst_recordArraysByQuery,
         key   = SC.guidFor(query),
         ret, ra ;
+
     if (!cache) cache = this._scst_recordArraysByQuery = {};
     ret = cache[key];
-    
-    // if a RecordArray was not found, then create one and also add it to the
-    // list of record arrays to update.
     if (!ret && createIfNeeded) {
       ret = SC.RecordArray.create({ store: this, query: query });
       if (query.scope) {
@@ -900,15 +896,19 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
         ra.add(ret);
       }
       cache[key] = ret;
-      if (refreshIfNew) {
+      if (refreshIfNew && !query.onlyLocal) {
         this.refreshQuery(query);
+        // we call flush only in case we really refresh the query and the query is not in memory only.
+        // because only then changes in the store can have happened.
+        // otherwise updating the RecordArrays can be disrupted by nested flush calls if records themselves
+        // issue new queries (which happens because RecordArray#flush calls materializeRecord)
         this.flush();
       }
     }
     return ret ;
   },
   
-  _findRecord: function(recordType, id) {
+  _findRecord: function(recordType, id, onlyLocal) {
 
     var storeKey ; 
     
@@ -922,7 +922,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     // as well.
     } else storeKey = id ? recordType.storeKeyFor(id) : null;
     
-    if (storeKey && (this.readStatus(storeKey) === SC.Record.EMPTY)) {
+    if (storeKey && (this.readStatus(storeKey) === SC.Record.EMPTY) && !onlyLocal) {
       storeKey = this.retrieveRecord(recordType, id);
     }
     
@@ -966,6 +966,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
   */
   refreshQuery: function(query) {
     if (!query) throw new Error("refreshQuery() requires a query");
+    if (query.onlyLocal) return this;
 
     var cache    = this._scst_recordArraysByQuery,
         recArray = cache ? cache[SC.guidFor(query)] : null, 
