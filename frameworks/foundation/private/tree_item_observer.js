@@ -317,20 +317,29 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
 
     The start, amt and delta params should reflect changes to the children
     array, not to the expanded range for the wrapper.
+
+    @param {Number} start First index of changed range
+    @param {Number} amt Length of changed range
+    @param {Number} delta Length difference
+    @param {Boolean} doNotDestroy (optional) Prevents destroying the branch observers in the specified range, only clears caches and recomputes length
+    @returns {void}
   */
-  observerContentDidChange: function(start, amt, delta) {
+  observerContentDidChange: function(start, amt, delta, doNotDestroy) {
+    
+    var expandedStartIndex = this.expandChildIndex(start);
 
     // clear caches
-    this.invalidateBranchObserversAt(start);
-    this._objectAtCache = this._outlineLevelCache = null;
+    if (doNotDestroy !== YES) this.invalidateBranchObserversAt(start, amt, delta);
+    if (this._objectAtCache) this._objectAtCache.length = expandedStartIndex;
+    if (this._outlineLevelCache) this._outlineLevelCache.length = expandedStartIndex;
     this._disclosureStateCache = null;
     this._contentGroupIndexes = NO;
     this.notifyPropertyChange('branchIndexes');
 
     var oldlen = this.get('length'),
         newlen = this._computeLength(),
-        parent = this.get('parentObserver'), set;
-
+        parent = this.get('parentObserver');
+    
     // update length if needed
     if (oldlen !== newlen) this.set('length', newlen);
 
@@ -338,27 +347,22 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
     if (!this._notifyParent) return this; // nothing more to do
 
     if (parent) {
-      set = SC.IndexSet.create(this.get('index'));
-      parent._childrenRangeDidChange(parent.get('children'), null, '[]', set);
+      parent.observerContentDidChange(this.get('index'), 1, 0, YES);
 
     // otherwise, note the enumerable content has changed.  note that we need
     // to convert the passed change to reflect the computed range
     } else {
       if (oldlen === newlen) {
         amt = this.expandChildIndex(start+amt);
-        start = this.expandChildIndex(start);
-        amt = amt - start ;
+        amt = amt - expandedStartIndex ;
         delta = 0 ;
 
       } else {
-        start = this.expandChildIndex(start);
-        amt   = newlen - start;
+        amt   = newlen - expandedStartIndex;
         delta = newlen - oldlen ;
       }
 
-      var removedCount = amt;
-      var addedCount = delta + removedCount;
-      this.arrayContentDidChange(start, removedCount, addedCount);
+      this.enumerableContentDidChange(expandedStartIndex, amt, delta);
     }
   },
 
@@ -660,22 +664,26 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
   },
 
   /**
-    Invalidates any branch observers on or after the specified index range.
+    Invalidates any branch observers in the specified range.
+    If amt is not specified then all branch observers on after index start will be invalidated.
+
+    @param {Number} start Index of first branch observer to invalidate
+    @param {Number} amt (optional) Length of the range to invalidate
+    @param {Number} delta (optional) Number of branch observers to delete
+    @returns {SC.TreeItemObserver} receiver
   */
-  invalidateBranchObserversAt: function(index) {
+  invalidateBranchObserversAt: function(start, amt, delta) {
     var byIndex = this._branchObserversByIndex,
-        indexes = this._branchObserverIndexes;
+        i, observer;
 
-    if (!byIndex || byIndex.length<=index) return this ; // nothing to do
-    if (index < 0) index = 0 ;
-
-    // destroy any observer on or after the range
-    indexes.forEachIn(index, indexes.get('max')-index, function(i) {
-      var observer = byIndex[i];
+    if (!byIndex || byIndex.length<=start) return this ; // nothing to do
+    if (SC.none(amt)) amt = delta = byIndex.length - start;
+    for (i = start; i < start + amt; i++) {
+      observer = byIndex[i];
       if (observer) observer.destroy();
-    }, this);
-
-    byIndex.length = index; // truncate to dump extra indexes
+      byIndex[i] = null;
+    }
+    byIndex.splice(start, Math.abs(delta));
 
     return this;
   },
