@@ -326,8 +326,6 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
   */
   observerContentDidChange: function(start, amt, delta, doNotDestroy) {
 
-    var expandedStartIndex = this.expandChildIndex(start);
-
     // clear caches
     if (doNotDestroy !== YES) this.invalidateBranchObserversAt(start, amt, delta);
     this._objectAtCache = this._outlineLevelCache = null;
@@ -351,6 +349,7 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
     // otherwise, note the enumerable content has changed.  note that we need
     // to convert the passed change to reflect the computed range
     } else {
+      var expandedStartIndex = this.expandChildIndex(start);
       if (oldlen === newlen) {
         amt = this.expandChildIndex(start+amt);
         amt = amt - expandedStartIndex ;
@@ -361,9 +360,9 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
         delta = newlen - oldlen ;
       }
 
-      var removedCount = amt;
-      var addedCount = delta + removedCount;
-      this.arrayContentDidChange(start, removedCount, addedCount);    
+      var addedCount = amt;
+      var removedCount = addedCount - delta;
+      this.arrayContentDidChange(start, removedCount, addedCount);
     }
   },
 
@@ -684,7 +683,11 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
       if (observer) observer.destroy();
       byIndex[i] = null;
     }
-    byIndex.splice(start, Math.abs(delta));
+    if (delta < 0) {
+      byIndex.splice(start, Math.abs(delta));
+    } else if (delta > 0) {
+      byIndex.length = start;
+    }
 
     return this;
   },
