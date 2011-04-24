@@ -706,6 +706,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
 
       var differenceSet = this._findDifferences(oldStoreKeys, storeKeys);
       if (differenceSet){
+//        if (oldStoreKeys) this.arrayContentWillChange(0, oldStoreKeys.length, 0);
         this.storeKeys = storeKeys; // replace content without triggering the observer
         // notify all nested RecordArrays of the changes in this RecordArray
         var nestedRecordArrays = this.get('nestedRecordArrays');
@@ -721,8 +722,8 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   },
 
   /**
-    Finds first index where the two storeKey arrays deviate from each other.
-    Returns -1 if they are identical.
+    Finds index range where the two storeKey arrays deviate from each other.
+    Returns null if they are identical.
 
     @param {SC.Array} old store keys
     @param {SC.Array} new store keys
@@ -730,7 +731,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   */
   _findDifferences: function(oldStoreKeys, storeKeys) {
     if (!oldStoreKeys) {
-      if (!storeKeys) return null;
+      if (!storeKeys || !storeKeys.length) return null;
       return SC.IndexSet.create(0, storeKeys.length);
     }
     var oldLen = oldStoreKeys.length,
@@ -745,7 +746,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     while (oldStoreKeys[endIdx] == storeKeys[endIdx] && endIdx > startIdx) {
       endIdx -= 1;
     }
-    if (startIdx < maxLen) return SC.IndexSet.create(startIdx, endIdx - startIdx + 1);
+    if (startIdx < maxLen) return SC.IndexSet.create(startIdx, endIdx >= startIdx ? endIdx - startIdx + 1 : maxLen - startIdx);
     return null;
   },
 
@@ -769,8 +770,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       });
       recordCache.length = newLen;
     }
-    this.arrayContentWillChange(firstDifference, oldLen, newLen);
-    this.arrayContentDidChange(firstDifference, oldLen, newLen);
+    this.arrayContentDidChange(firstDifference, oldLen - firstDifference, newLen - firstDifference);
   },
 
 
