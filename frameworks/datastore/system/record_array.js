@@ -769,7 +769,8 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       });
       recordCache.length = newLen;
     }
-    this.enumerableContentDidChange(firstDifference, differenceSet.get('length'), newLen - oldLen);
+    this.arrayContentWillChange(firstDifference, oldLen, newLen);
+    this.arrayContentDidChange(firstDifference, oldLen, newLen);
   },
 
 
