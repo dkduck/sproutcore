@@ -828,15 +828,62 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   // INTERNAL SUPPORT
   // 
 
+  /** @private
+    Invoked whenever the `storeKeys` array changes.  Observes changes.
+  */
+  _storeKeysDidChange: function() {
+    var storeKeys = this.get('storeKeys');
+
+    var prev = this._prevStoreKeys, oldLen, newLen;
+
+    if (storeKeys === prev) { return; } // nothing to do
+
+    if (prev) {
+      prev.removeArrayObservers({
+        target: this,
+        willChange: this.arrayContentWillChange,
+        didChange: this._storeKeysContentDidChange
+      });
+
+      oldLen = prev.get('length');
+    } else {
+      oldLen = 0;
+    }
+
+    this._prevStoreKeys = storeKeys;
+    if (storeKeys) {
+      storeKeys.addArrayObservers({
+        target: this,
+        willChange: this.arrayContentWillChange,
+        didChange: this._storeKeysContentDidChange
+      });
+
+      newLen = storeKeys.get('length');
+    } else {
+      newLen = 0;
+    }
+
+    this._storeKeysContentDidChange(0, oldLen, newLen);
+
+  }.observes('storeKeys'),
+
+  /** @private
+    Invoked whenever the content of the `storeKeys` array changes.  This will
+    dump any cached record lookup and then notify that the enumerable content
+    has changed.
+  */
+  _storeKeysContentDidChange: function(start, removedCount, addedCount) {
+    if (this._scra_records) this._scra_records.length=0 ; // clear cache
+
+    this.arrayContentDidChange(start, removedCount, addedCount);
+  },
+
   /** @private */
   init: function() {
     sc_super();
-  },
+    this._storeKeysDidChange();
+  }
 
-  _storeKeysDidChange: function() {
-    this.enumerableContentDidChange();
-  }.observes('storeKeys')
-  
 });
 
 SC.RecordArray.mixin(/** @scope SC.RecordArray.prototype */{
