@@ -890,7 +890,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
       ret = SC.RecordArray.create({ store: this, query: query });
       if (query.scope) {
         ret.registerWithParents();
-      } else {
+      } else if (query.get('location') == SC.Query.LOCAL) {
         ra = this.get('recordArrays');
         if (!ra) this.set('recordArrays', ra = SC.Set.create());
         ra.add(ret);
