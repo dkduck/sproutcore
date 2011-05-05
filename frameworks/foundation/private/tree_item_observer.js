@@ -774,7 +774,7 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
     });
 
     this._children = cur ;
-    this._childrenRangeDidChange(0, len, len);
+    this._childrenRangeDidChange(0, last ? last.get('length') : 0, len);
 
   }.observes("children", "disclosureState"),
 
@@ -785,7 +785,7 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
   */
   _childrenRangeDidChange: function(start, removedCount, addedCount) {
     this.setIfChanged('disclosureState', this._computeDisclosureState(this.get('item')));
-    this.observerContentDidChange(start, addedCount, addedCount - removedCount);
+    this.observerContentDidChange(start, Math.max(addedCount, removedCount), addedCount - removedCount);
   },
 
   /**
