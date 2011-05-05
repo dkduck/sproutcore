@@ -675,7 +675,7 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
   invalidateBranchObserversAt: function(start, amt, delta) {
     var byIndex = this._branchObserversByIndex,
         i, observer;
-
+console.log('!');
     if (!byIndex || byIndex.length<=start) return this ; // nothing to do
     if (SC.none(amt)) amt = delta = byIndex.length - start;
     for (i = start; i < start + amt; i++) {
@@ -722,9 +722,11 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
     var item = this.get('item');
     if (item) item.removeObserver('*', this, this._itemPropertyDidChange);
 
-    var children = this._children,
-        ro = this._childrenRangeObserver;
-    if (children && ro) children.removeRangeObserver(ro);
+    if (this._children) this._children.removeArrayObservers({
+        target: this,
+        willChange: this.arrayContentWillChange,
+        didChange: this._childrenRangeDidChange
+    });
 
     this.set('length', 0);
 
@@ -760,18 +762,19 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
   _childrenDidChange: function() {
     var state = this.get('disclosureState'),
         cur   = state === SC.BRANCH_OPEN ? this.get('children') : null,
-        last  = this._children,
-        ro    = this._childrenRangeObserver;
+        len   = cur ? cur.get('length') : 0,
+        last  = this._children;
 
     if (last === cur) return this; //nothing to do
-    if (ro) last.removeRangeObserver(ro);
-    if (cur) {
-      this._childrenRangeObserver =
-          cur.addRangeObserver(null, this, this._childrenRangeDidChange);
-    } else this._childrenRangeObserver = null;
+    if (last) last.removeArrayObservers({target: this, willChange: this.arrayContentWillChange, didChange: this._childrenRangeDidChange});
+    if (cur) cur.addArrayObservers({
+      target: this,
+      willChange: this.arrayContentWillChange,
+      didChange: this._childrenRangeDidChange
+    });
 
     this._children = cur ;
-    this._childrenRangeDidChange(cur, null, '[]', null);
+    this._childrenRangeDidChange(0, len, len);
 
   }.observes("children", "disclosureState"),
 
@@ -780,15 +783,8 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
     changes the length property, then notifies the parent that the content
     might have changed.
   */
-  _childrenRangeDidChange: function(array, objects, key, indexes) {
-    var children = this.get('children'),
-        len = children ? children.get('length') : 0,
-        min = indexes ? indexes.get('min') : 0,
-        max = indexes ? indexes.get('max') : len,
-        old = this._childrenLen || 0;
-
-    this._childrenLen = len; // save for future calls
-    this.observerContentDidChange(min, max-min, len-old);
+  _childrenRangeDidChange: function(start, removedCount, addedCount) {
+    this.observerContentDidChange(start, addedCount, addedCount - removedCount);
   },
 
   /**
