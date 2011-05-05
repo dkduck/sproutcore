@@ -675,7 +675,7 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
   invalidateBranchObserversAt: function(start, amt, delta) {
     var byIndex = this._branchObserversByIndex,
         i, observer;
-console.log('!');
+
     if (!byIndex || byIndex.length<=start) return this ; // nothing to do
     if (SC.none(amt)) amt = delta = byIndex.length - start;
     for (i = start; i < start + amt; i++) {
