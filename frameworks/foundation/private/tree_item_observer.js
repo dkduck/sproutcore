@@ -761,7 +761,7 @@ console.log('!');
   */
   _childrenDidChange: function() {
     var state = this.get('disclosureState'),
-        cur   = state === SC.BRANCH_OPEN ? this.get('children') : null,
+        cur   = state == SC.BRANCH_OPEN || state == SC.LEAF_NODE ? this.get('children') : null,
         len   = cur ? cur.get('length') : 0,
         last  = this._children;
 
@@ -784,6 +784,7 @@ console.log('!');
     might have changed.
   */
   _childrenRangeDidChange: function(start, removedCount, addedCount) {
+    this.setIfChanged('disclosureState', this._computeDisclosureState(this.get('item')));
     this.observerContentDidChange(start, addedCount, addedCount - removedCount);
   },
 
