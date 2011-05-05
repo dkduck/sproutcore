@@ -881,7 +881,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   /** @private */
   init: function() {
     sc_super();
-    this._storeKeysDidChange();
+    if (this.getPath('query.location') == SC.Query.REMOTE) this._storeKeysDidChange();
   }
 
 });
