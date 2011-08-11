@@ -978,10 +978,10 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
   },
 
   /** @private
-    Will ask all record arrays that have been returned from `findAll`
-    with an `SC.Query` to check their arrays with the new `storeKey`s
+    Will ask all record arrays that have been returned from find
+    with an SC.Query to check their arrays with the new storeKeys
 
-    @param {SC.IndexSet} storeKeys set of storeKeys that changed
+@param {SC.IndexSet} storeKeys set of storeKeys that changed
     @param {SC.Set} recordTypes
     @returns {SC.Store} receiver
   */
@@ -989,10 +989,10 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     var recordArrays = this.get('recordArrays');
     if (!recordArrays) return this;
 
-    recordArrays.forEach(function(recArray) {
-      if (recArray) recArray.storeDidChangeStoreKeys(storeKeys, recordTypes);
-    }, this);
-
+    // first inform all RecordArrays about the changes ...
+    recordArrays.invoke('storeDidChangeStoreKeys', storeKeys, recordTypes);
+    // and then flush them all
+    recordArrays.invoke('flushFromLeafs');
     return this ;
   },
 
