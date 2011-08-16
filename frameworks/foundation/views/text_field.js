@@ -818,10 +818,10 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
   },
   
   fieldDidBlur: function(evt) {
-    this.resignFirstResponder() ;
+    if (this.get('isKeyResponder')) this.resignFirstResponder();
 
     if(this.get('commitOnBlur')) this.commitEditing(evt);
-    
+
     // get the pane we hid intercept pane for (if any)
     var touchPane = this._didHideInterceptForPane;
     if (touchPane) {
