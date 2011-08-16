@@ -636,6 +636,9 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
         changed   = this._scq_changedStoreKeys,
         relevantChangedStoreKeys = [],
         addedStoreKeys = [],
+        changedStoreKeys = [],
+        addedCount = 0,
+        changedCount = 0,
         didChange = NO,
         K         = SC.Record,
         storeKeysToPace = [],
@@ -645,7 +648,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     // if we have storeKeys already, just look at the changed keys
     var oldStoreKeys = storeKeys;
     if (storeKeys && !_flush) {
-
       if (changed) {
         changed.forEach(function(storeKey) {
           if(storeKeysToPace.length>0 || new Date()-startDate>SC.RecordArray.QUERY_MATCHING_THRESHOLD) {
@@ -664,9 +666,11 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
             if (storeKeys.indexOf(storeKey)<0) {
               if (!didChange) storeKeys = storeKeys.copy();
               addedStoreKeys.push(storeKey);
-              relevantChangedStoreKeys.push(storeKey);
-              didChange = YES ;
+            } else {
+              changedStoreKeys.push(storeKey);
             }
+            relevantChangedStoreKeys.push(storeKey);
+            didChange = YES ;
           // if storeKey should NOT be in set but IS -- remove it
           } else {
             if (storeKeys.indexOf(storeKey)>=0) {
@@ -712,18 +716,24 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
 
     // only resort and update if we did change
     if (didChange) {
-      // First sort the new storeKeys
-      addedStoreKeys = SC.Query.orderStoreKeys(addedStoreKeys, query, store);
-      // then merge them with the existing storeKeys
-      if (addedStoreKeys.length > 0) {
-          storeKeys = SC.Query.mergeStoreKeys(storeKeys || [], addedStoreKeys, query, store);
+      addedCount = addedStoreKeys.length;
+      changedCount = changedStoreKeys.length;
+      if (addedCount + changedCount > 0) {
+        // First sort the new storeKeys
+        if (addedCount > 0) addedStoreKeys = SC.Query.orderStoreKeys(addedStoreKeys, query, store);
+        // then merge them with the existing storeKeys
+        storeKeys = SC.Query.mergeStoreKeys(storeKeys || [], addedStoreKeys, query, store);
+        if (changedCount > 0) {
+          changedStoreKeys = SC.Query.orderStoreKeys(changedStoreKeys, query, store);
+          storeKeys.removeObjects(changedStoreKeys);
+          storeKeys = SC.Query.mergeStoreKeys(storeKeys, changedStoreKeys, query, store);
+        }
       } else {
           storeKeys = storeKeys ? storeKeys.copy() : [];
       }
 
       var differenceSet = this._findDifferences(oldStoreKeys, storeKeys);
       if (differenceSet){
-//        if (oldStoreKeys) this.arrayContentWillChange(0, oldStoreKeys.length, 0);
         this.storeKeys = storeKeys; // replace content without triggering the observer
         // notify all nested RecordArrays of the changes in this RecordArray
         var nestedRecordArrays = this.get('nestedRecordArrays');
@@ -732,7 +742,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
         this._notifyStoreKeyChanges(oldStoreKeys, storeKeys, differenceSet);
       }
 
-      }
+    }
 
     this._insideFlush = NO;
     return this;
