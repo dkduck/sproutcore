@@ -383,7 +383,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
         recordType, rec, status;
 
     sourceKeys = SC.IndexSet.create();
-//if (scope) debugger;
+
      if (recordType = this.get('expandedRecordTypes')) {
       recordType.forEach(function(rt) {
           sourceKeys.addEach(store.storeKeysFor(rt));
@@ -520,7 +520,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
     tokens = this._tokenList = this.tokenizeString(conditions, lang);
     tree = this._tokenTree = this.buildTokenTree(tokens, lang);
     this._order = this.buildOrder(this.get('orderBy'));
-    
+
     this._isReady = !!tree && !tree.error;
     if (tree && tree.error) throw tree.error;
     return this._isReady;
@@ -1372,7 +1372,7 @@ SC.Query.mixin( /** @scope SC.Query */ {
         ret.push(record.get('storeKey'));
       }
     }
-    
+
     ret = SC.Query.orderStoreKeys(ret, query, store);
     
     return ret;
@@ -1566,7 +1566,6 @@ SC.Query.mixin( /** @scope SC.Query */ {
       // set conditions and params if needed
       if (conditions) opts.conditions = conditions;
       if (params) opts.parameters = params;
-
       ret = SC.Query.create(opts).freeze();
     }
     
