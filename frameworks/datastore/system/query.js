@@ -353,7 +353,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
    */
   scopeContains: function(record) {
     var scope = this.get('scope'),
-        included = NO,
+        included = null,
         i;
 
     if (!scope) return YES;
@@ -361,10 +361,10 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
       if (scope[i].operator == this._RELATIONAL_OPERATOR_UNION) {
         included = included || scope[i].source.contains(record);
       } else if (scope[i].operator == this._RELATIONAL_OPERATOR_DIFFERENCE) {
-        included = included && !scope[i].source.contains(record);
+        included = included !== null ? included && !scope[i].source.contains(record) : !scope[i].source.contains(record);
       }
     }
-    return included;
+    return !!included;
   },
 
   /** @private
@@ -383,6 +383,13 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
         recordType, rec, status;
 
     sourceKeys = SC.IndexSet.create();
+//if (scope) debugger;
+     if (recordType = this.get('expandedRecordTypes')) {
+      recordType.forEach(function(rt) {
+          sourceKeys.addEach(store.storeKeysFor(rt));
+      });
+    }
+
     if (scope) {
       scope.forEach(function(scopeItem) {
         var scopeSourceKeys = scopeItem.source.get('storeKeys');
@@ -393,10 +400,6 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
           sourceKeys.removeEach(scopeItem.source.get('storeKeys'));
         }
       }, this);
-    } else if (recordType = this.get('expandedRecordTypes')) {
-      recordType.forEach(function(rt) {
-        sourceKeys.addEach(store.storeKeysFor(rt));
-      });
     }
 
     // loop through storeKeys to determine if it belongs in this query or not.
