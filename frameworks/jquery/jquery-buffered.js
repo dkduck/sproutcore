@@ -17,7 +17,7 @@ jQuery.bufferedJQuery.fn.extend({
     // if there is no value, we don't handle it.
     if (value === undefined) {
       if (this.length < 1) return undefined;
-      return jQuery.Buffer.bufferForElement(this[i]).html();
+      return jQuery.Buffer.bufferForElement(this[0]).html();
     }
 
     // there is a vlaue. We are going to do it like jquery, but different.
@@ -33,7 +33,7 @@ jQuery.bufferedJQuery.fn.extend({
   text: function(value) {
     if (value === undefined) {
       if (this.length < 1) return undefined;
-      return jQuery.Buffer.bufferForElement(this[i]).text();
+      return jQuery.Buffer.bufferForElement(this[0]).text();
     }
 
     // there is a vlaue. We are going to do it like jquery, but different.
