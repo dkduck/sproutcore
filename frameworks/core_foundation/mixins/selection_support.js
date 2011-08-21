@@ -234,12 +234,12 @@ SC.SelectionSupport = {
     // Remove any selection set objects that are no longer in the content
     indexSet = selectionSet.indexSetForSource(arrangedObjects);
     if ((indexSet && (indexSet.get('length') !== selectionSet.get('length'))) || (!indexSet && (selectionSet.get('length') > 0))) { // then the selection content has changed
-      selectionSet = selectionSet.copy().constrain(arrangedObjects).freeze();
+      selectionSet = arrangedObjects ? selectionSet.copy().constrain(arrangedObjects).freeze() : null;
       this.set('selection', selectionSet);
     }
 
     // Reselect an object if required (if content length > 0)
-    if ((selectionSet.get('length') === 0) && arrangedObjects && (arrangedObjects.get('length') > 0) && !allowsEmptySelection) {
+    if (selectionSet && (selectionSet.get('length') === 0) && arrangedObjects && (arrangedObjects.get('length') > 0) && !allowsEmptySelection) {
       this.selectObject(this.get('firstSelectableObject'), NO);
     }
 

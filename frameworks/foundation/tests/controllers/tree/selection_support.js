@@ -338,3 +338,24 @@ function() {
   equals(selectionSet.get('length'), 0, 'selection set should have length 0');
   ok(indexSet === null, 'selection set should not have an indexSet');
 });
+
+
+/**
+  Test that selection is cleared when arrangedObjects becomes null
+*/
+test("SC.ArrayController(SC.SelectionSupport) existing selection is cleared when setting when arrangedObjects becomes null",
+function() {
+  var selectionSet, source;
+
+  // Select 3 items
+  controller.selectObjects([content.treeItemChildren[0].treeItemChildren[1], content.treeItemChildren[0].treeItemChildren[2], content.treeItemChildren[1].treeItemChildren[0]], NO);
+
+  controller.set('content', null);
+
+  source = controller.get('arrangedObjects');
+  selectionSet = controller.get('selection');
+  equals(source, null, 'arrangedObjects should be null');
+  ok(!controller.get('hasSelection'), 'tree controller should not have a selection anymore');
+  equals(selectionSet.get('length'), 0, 'selection set should have length 0');
+});
+
