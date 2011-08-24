@@ -24,6 +24,7 @@ SC.JoinRecord = SC.Record.extend({
 
     _parentRecordsDidChange: function(sender, key) {
         this.get('store').dataHashDidChange(this.get('storeKey'), null, NO, key);
+        if (this.parentRecordsDidChange) this.parentRecordsDidChange(sender, key);
     }.observes('*leftRecord.*', '*rightRecord.*'),
 
     unknownProperty: function(key, value) {

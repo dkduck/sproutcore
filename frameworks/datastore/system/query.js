@@ -456,9 +456,9 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
                         leftStoreKey = record.get('leftStoreKey'),
                         rightStoreKey = record.get('rightStoreKey');
 
-                    if (leftChangeset.deleted.contains(leftStoreKey)) {
+                    if (leftChangeset && leftChangeset.deleted.contains(leftStoreKey)) {
                         deleted.push(storeKey);
-                    } else if (rightChangeset.deleted.contains(rightStoreKey)) {
+                    } else if (rightChangeset && rightChangeset.deleted.contains(rightStoreKey)) {
                         record.set('rightRecord', null);
                         updated.push(storeKey);
                     } else if ((leftChangeset && leftChangeset.updated.contains(leftStoreKey)) ||
