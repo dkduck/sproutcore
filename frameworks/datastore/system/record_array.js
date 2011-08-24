@@ -485,6 +485,9 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     return this ;
   },
 
+  _scra_changedStoreKeys: {},
+  _hasChanges: NO,
+
   /** @private
     Called by the store whenever it changes the state of certain store keys.
     If the receiver cares about these changes, it will mark itself as dirty and notify
@@ -499,15 +502,22 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @returns {SC.RecordArray} receiver
   */
   storeDidChangeStoreKeys: function(storeKeys, recordTypes) {
-    var query =  this.get('query');
+    var query =  this.get('query'),
+        storeGuid = SC.guidFor(this.get('store'));
     // fast path exits
     if (query.get('location') !== SC.Query.LOCAL) return this;
     if (!query.containsRecordTypes(recordTypes)) return this;
+    if (storeKeys.get('length') === 0) return this;
 
     // ok - we're interested.  mark as dirty and save storeKeys.
-    var changed = this._scq_changedStoreKeys;
-    if (!changed) changed = this._scq_changedStoreKeys = SC.IndexSet.create();
-    changed.addEach(storeKeys);
+    var changed = this._scra_changedStoreKeys[storeGuid];
+    if (!changed) changed = this._scra_changedStoreKeys[storeGuid] = {
+        added: SC.Set.create(),
+        deleted: SC.Set.create(),
+        updated: SC.Set.create()
+    };
+    changed.updated.addEach(storeKeys);
+    this._hasChanges = YES;
 
     this.parentDidBecomeDirty();
     return this;
@@ -561,12 +571,20 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @param {Array} storeKeys that changed in the parent RecordArray
     @returns {SC.RecordArray} receiver
   */
-  parentDidChangeStoreKeys: function(storeKeys) {
-    if (storeKeys.length == 0) return this;
-    var changed = this._scq_changedStoreKeys;
+  parentDidChangeStoreKeys: function(added, deleted, updated, parent) {
+    var parentGuid = SC.guidFor(parent),
+        changed = this._scra_changedStoreKeys[parentGuid];
 
-    if (!changed) changed = this._scq_changedStoreKeys = SC.IndexSet.create();
-    changed.addEach(storeKeys);
+    if (added.get('length') + deleted.get('length') + updated.get('length') === 0) return this;
+    if (!changed) changed = this._scra_changedStoreKeys[parentGuid] = {
+      added: SC.Set.create(),
+      deleted: SC.Set.create(),
+      updated: SC.Set.create()
+    };
+    changed.added.addEach(added);
+    changed.deleted.addEach(deleted);
+    changed.updated.addEach(updated);
+    this._hasChanges = YES;
     return this;
   },
 
@@ -604,148 +622,59 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @returns {SC.RecordArray} receiver
   */
   flush: function(_flush) {
-    if (!this.get('enabled')) return this;
-    // Are we already inside a flush?  If so, then don't do it again, to avoid
-    // never-ending recursive flush calls.  Instead, we'll simply mark
-    // ourselves as needing a flush again when we're done.
-    if (this._insideFlush) {
-      this.set('needsFlush', YES);
-      return this;
-    }
+      var query,
+          store,
+          parents,
+          storeKeys,
+          changed,
+          queryResult,
+          newStoreKeys,
+          relevantStoreKeys;
 
-    if (!this.get('needsFlush') && !_flush) return this; // nothing to do
-    this.set('needsFlush', NO); // avoid running again.
+      if (!this.get('enabled')) return this;
 
-    // fast exit
-    var query = this.get('query'),
-        store = this.get('store');
-    if (!store || !query || query.get('location') !== SC.Query.LOCAL) {
-      return this;
-    }
-
-    this._insideFlush = YES;
-    // if this is a nested RecordArray we have to make sure that all parent RecordArrays are flushed
-    // before we flush ourselves
-    var parents = this.getPath('query.scope');
-    if (parents) parents.forEach(function(scopeItem) {
-        scopeItem.source.flush();
-    }, this);
-
-    // OK, actually generate some results
-    var storeKeys = this.get('storeKeys'),
-        changed   = this._scq_changedStoreKeys,
-        relevantChangedStoreKeys = [],
-        addedStoreKeys = [],
-        changedStoreKeys = [],
-        addedCount = 0,
-        changedCount = 0,
-        didChange = NO,
-        K         = SC.Record,
-        storeKeysToPace = [],
-        startDate = new Date(),
-        rec, status, recordType, sourceKeys, scope, included;
-
-    // if we have storeKeys already, just look at the changed keys
-    var oldStoreKeys = storeKeys;
-    if (storeKeys && !_flush) {
-      if (changed) {
-        changed.forEach(function(storeKey) {
-          if(storeKeysToPace.length>0 || new Date()-startDate>SC.RecordArray.QUERY_MATCHING_THRESHOLD) {
-            storeKeysToPace.push(storeKey);
-            return;
-          }
-          // get record - do not include EMPTY or DESTROYED records
-          status = store.peekStatus(storeKey);
-          if (!(status & K.EMPTY) && !((status & K.DESTROYED) || (status === K.BUSY_DESTROYING))) {
-            rec = store.materializeRecord(storeKey);
-            included = !!(rec && query.contains(rec));
-          } else included = NO ;
-
-          // if storeKey should be in set but isn't -- add it.
-          if (included) {
-            if (storeKeys.indexOf(storeKey)<0) {
-              if (!didChange) storeKeys = storeKeys.copy();
-              addedStoreKeys.push(storeKey);
-            } else {
-              changedStoreKeys.push(storeKey);
-            }
-            relevantChangedStoreKeys.push(storeKey);
-            didChange = YES ;
-          // if storeKey should NOT be in set but IS -- remove it
-          } else {
-            if (storeKeys.indexOf(storeKey)>=0) {
-              if (!didChange) storeKeys = storeKeys.copy();
-              storeKeys.removeObject(storeKey);
-              relevantChangedStoreKeys.push(storeKey);
-              didChange = YES ;
-            } // if (storeKeys.indexOf)
-          } // if (included)
-
-        }, this);
-      } // if (changed)
-
-      //console.log(this.toString() + ' partial flush took ' + (new Date()-startDate) + ' ms');
-
-    // if no storeKeys, then we have to go through all of the storeKeys
-    // and decide if they belong or not.  ick.
-    } else {
-
-      // collect the base set of keys
-      addedStoreKeys = relevantChangedStoreKeys = query.getSourceStoreKeys(store);
-      didChange = YES ;
-    }
-
-    // if we reach our threshold of pacing we need to schedule the rest of the
-    // storeKeys to also be updated
-    if(storeKeysToPace.length>0) {
-      var self = this;
-      // use setTimeout here to guarantee that we hit the next runloop,
-      // and not the same runloop which the invoke* methods do not guarantee
-      window.setTimeout(function() {
-        SC.run(function() {
-          if(!self || self.get('isDestroyed')) return;
-          self.set('needsFlush', YES);
-          self._scq_changedStoreKeys = SC.IndexSet.create().addEach(storeKeysToPace);
-          self.flush();
-        });
-      }, 1);
-    }
-
-    // clear set of changed store keys
-    if (changed) changed.clear();
-
-    // only resort and update if we did change
-    if (didChange) {
-      addedCount = addedStoreKeys.length;
-      changedCount = changedStoreKeys.length;
-      if (addedCount + changedCount > 0) {
-        // First sort the new storeKeys
-        if (addedCount > 0) addedStoreKeys = SC.Query.orderStoreKeys(addedStoreKeys, query, store);
-        // then merge them with the existing storeKeys
-        storeKeys = SC.Query.mergeStoreKeys(storeKeys || [], addedStoreKeys, query, store);
-        if (changedCount > 0) {
-          changedStoreKeys = SC.Query.orderStoreKeys(changedStoreKeys, query, store);
-          storeKeys.removeObjects(changedStoreKeys);
-          storeKeys = SC.Query.mergeStoreKeys(storeKeys, changedStoreKeys, query, store);
-        }
-      } else {
-          storeKeys = storeKeys ? storeKeys.copy() : [];
+      if (this._insideFlush) {
+          this.set('needsFlush', YES);
+          return this;
       }
 
-      var differenceSet = this._findDifferences(oldStoreKeys, storeKeys);
-      if (differenceSet){
-        this.storeKeys = storeKeys; // replace content without triggering the observer
-        // notify all nested RecordArrays of the changes in this RecordArray
-        var nestedRecordArrays = this.get('nestedRecordArrays');
-        if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', relevantChangedStoreKeys);
-        // propagate record array changes
-        this._notifyStoreKeyChanges(oldStoreKeys, storeKeys, differenceSet);
+      if (!this.get('needsFlush') && !_flush) return this;
+      this.set('needsFlush', NO);
+
+      query = this.get('query'),
+      store = this.get('store');
+      if (!store || !query || query.get('location') !== SC.Query.LOCAL) return this;
+
+      this._insideFlush = YES;
+
+      // if this is a nested RecordArray we have to make sure that all parent RecordArrays are flushed
+      // before we flush ourselves
+      parents = this.getPath('query.scope');
+      if (parents) parents.forEach(function(scopeItem) {
+          scopeItem.source.flush();
+      }, this);
+
+      storeKeys = this.get('storeKeys');
+      changed = this._scra_changedStoreKeys;
+
+      queryResult = query.merge(_flush ? null : storeKeys, changed, this._hasChanges, this);
+      newStoreKeys = queryResult.storeKeys;
+      this._scra_changedStoreKeys = {};
+      this._hasChanges = NO;
+
+      var differenceSet = this._findDifferences(storeKeys, newStoreKeys);
+      if (differenceSet) {
+          // replace content without triggering the observer, because we do the change notification ourselves here
+          this.storeKeys = newStoreKeys;
+          this._notifyStoreKeyChanges(storeKeys, newStoreKeys, differenceSet);
       }
 
-    }
+      // notify all nested RecordArrays of the changes considered relevant to this RecordArray
+      var nestedRecordArrays = this.get('nestedRecordArrays');
+      if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.added, queryResult.deleted, queryResult.updated, this);
 
-    this._insideFlush = NO;
-    return this;
+      this._insideFlush = NO;
+      return this;
   },
 
   /**
@@ -757,24 +686,26 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @returns {SC.IndexSet} Changed index range or null if identical
   */
   _findDifferences: function(oldStoreKeys, storeKeys) {
-    if (!oldStoreKeys) {
-      if (!storeKeys || !storeKeys.length) return null;
-      return SC.IndexSet.create(0, storeKeys.length);
-    }
-    var oldLen = oldStoreKeys.length,
-        newLen = storeKeys.length,
-        maxLen = oldLen > newLen ? oldLen : newLen,
-        startIdx = 0,
-        endIdx = newLen - 1;
+      if (oldStoreKeys === storeKeys) {
+          return null;
+      } else if (!oldStoreKeys) {
+          if (!storeKeys || !storeKeys.length) return null;
+          return SC.IndexSet.create(0, storeKeys.length);
+      }
+      var oldLen = oldStoreKeys.length,
+          newLen = storeKeys.length,
+          maxLen = oldLen > newLen ? oldLen : newLen,
+          startIdx = 0,
+          endIdx = newLen - 1;
 
-    while (oldStoreKeys[startIdx] == storeKeys[startIdx] && startIdx < newLen) {
-      startIdx += 1;
-    }
-    while (oldStoreKeys[endIdx] == storeKeys[endIdx] && endIdx > startIdx) {
-      endIdx -= 1;
-    }
-    if (startIdx < maxLen) return SC.IndexSet.create(startIdx, endIdx >= startIdx ? endIdx - startIdx + 1 : maxLen - startIdx);
-    return null;
+      while (oldStoreKeys[startIdx] == storeKeys[startIdx] && startIdx < newLen) {
+          startIdx += 1;
+      }
+      while (oldStoreKeys[endIdx] == storeKeys[endIdx] && endIdx > startIdx) {
+          endIdx -= 1;
+      }
+      if (startIdx < maxLen) return SC.IndexSet.create(startIdx, endIdx >= startIdx ? endIdx - startIdx + 1 : maxLen - startIdx);
+      return null;
   },
 
   /**
@@ -783,7 +714,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
 
     @param {SC.Array} old store keys
     @param {SC.Array} new store keys
-    @param {Number} Index of first difference between the store key arrays
+    @param {SC.IndexSet} Changed indexes in the store key array
   */
   _notifyStoreKeyChanges: function(oldStoreKeys, storeKeys, differenceSet) {
     var newLen = storeKeys.length,
@@ -942,13 +873,4 @@ SC.RecordArray.mixin(/** @scope SC.RecordArray.prototype */{
     @type SC.Error
   */
   NOT_EDITABLE: SC.Error.desc("SC.RecordArray is not editable"),
-
-  /**
-    Number of milliseconds to allow a query matching to run for. If this number
-    is exceeded, the query matching will be paced so as to not lock up the
-    browser (by essentially splitting the work with a setTimeout)
-
-    @type Number
-  */
-  QUERY_MATCHING_THRESHOLD: 100
 });
