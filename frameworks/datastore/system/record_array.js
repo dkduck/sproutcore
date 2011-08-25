@@ -485,9 +485,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     return this ;
   },
 
-  _scra_changedStoreKeys: {},
-  _hasChanges: NO,
-
   /** @private
     Called by the store whenever it changes the state of certain store keys.
     If the receiver cares about these changes, it will mark itself as dirty and notify
@@ -510,6 +507,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     if (storeKeys.get('length') === 0) return this;
 
     // ok - we're interested.  mark as dirty and save storeKeys.
+    if (!this._scra_changedStoreKeys) this._scra_changedStoreKeys = {};
     var changed = this._scra_changedStoreKeys[storeGuid];
     if (!changed) changed = this._scra_changedStoreKeys[storeGuid] = {
         added: SC.Set.create(),
@@ -517,7 +515,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
         updated: SC.Set.create()
     };
     changed.updated.addEach(storeKeys);
-    this._hasChanges = YES;
 
     this.parentDidBecomeDirty();
     return this;
@@ -573,9 +570,11 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   */
   parentDidChangeStoreKeys: function(added, deleted, updated, parent) {
     var parentGuid = SC.guidFor(parent),
-        changed = this._scra_changedStoreKeys[parentGuid];
+        changed;
 
     if (added.get('length') + deleted.get('length') + updated.get('length') === 0) return this;
+    if (!this._scra_changedStoreKeys) this._scra_changedStoreKeys = {};
+    changed = this._scra_changedStoreKeys[parentGuid];
     if (!changed) changed = this._scra_changedStoreKeys[parentGuid] = {
       added: SC.Set.create(),
       deleted: SC.Set.create(),
@@ -584,7 +583,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     changed.added.addEach(added);
     changed.deleted.addEach(deleted);
     changed.updated.addEach(updated);
-    this._hasChanges = YES;
     return this;
   },
 
@@ -648,30 +646,34 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       this._insideFlush = YES;
 
       // if this is a nested RecordArray we have to make sure that all parent RecordArrays are flushed
-      // before we flush ourselves
+      // before we flush ourselves, so that changes have a chance to bubble up
       parents = this.getPath('query.scope');
       if (parents) parents.forEach(function(scopeItem) {
           scopeItem.source.flush();
       }, this);
 
-      storeKeys = this.get('storeKeys');
-      changed = this._scra_changedStoreKeys;
+      if (this._scra_changedStoreKeys || !this._flushed) {
 
-      queryResult = query.merge(_flush ? null : storeKeys, changed, this._hasChanges, this);
-      newStoreKeys = queryResult.storeKeys;
-      this._scra_changedStoreKeys = {};
-      this._hasChanges = NO;
+          this._flushed = YES;
 
-      var differenceSet = this._findDifferences(storeKeys, newStoreKeys);
-      if (differenceSet) {
-          // replace content without triggering the observer, because we do the change notification ourselves here
-          this.storeKeys = newStoreKeys;
-          this._notifyStoreKeyChanges(storeKeys, newStoreKeys, differenceSet);
+          storeKeys = this.get('storeKeys');
+
+          queryResult = query.merge(_flush ? null : storeKeys, this._scra_changedStoreKeys, this);
+          this._scra_changedStoreKeys = null;
+          newStoreKeys = queryResult.storeKeys;
+
+          var differenceSet = this._findDifferences(storeKeys, newStoreKeys);
+          if (differenceSet) {
+              // replace content without triggering the observer, because we do the change notification ourselves here
+              this.storeKeys = newStoreKeys;
+              this._notifyStoreKeyChanges(storeKeys, newStoreKeys, differenceSet);
+          }
+
+          // notify all nested RecordArrays of the changes considered relevant to this RecordArray
+          var nestedRecordArrays = this.get('nestedRecordArrays');
+          if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.added, queryResult.deleted, queryResult.updated, this);
+
       }
-
-      // notify all nested RecordArrays of the changes considered relevant to this RecordArray
-      var nestedRecordArrays = this.get('nestedRecordArrays');
-      if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.added, queryResult.deleted, queryResult.updated, this);
 
       this._insideFlush = NO;
       return this;

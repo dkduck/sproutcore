@@ -422,7 +422,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
     /**
      * Merges a set of new/updated record storeKeys into existing storeKeys
      */
-    merge: function(storeKeys, changed, hasChanges, recordArray) {
+    merge: function(storeKeys, changed, recordArray) {
         var status, record, included,
             store = recordArray.get('store'),
             K = SC.Record,
@@ -439,13 +439,13 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
 
             leftSource = scope[0].source;
             rightSource = scope[1].source;
-            leftChangeset = changed[scope[0].guid];
-            rightChangeset = changed[scope[1].guid];
             leftKey = this.get('leftJoinKey');
             rightKey = this.get('rightJoinKey');
 
             if (storeKeys) {
 
+                leftChangeset = changed[scope[0].guid];
+                rightChangeset = changed[scope[1].guid];
                 storeKeys = SC.copy(storeKeys);
 
                 // deletions of left records -> push to deleted
@@ -548,7 +548,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
 
             if (storeKeys) {
 
-                if (hasChanges) {
+                if (changed) {
                     unifiedChanges = this._unifyChanges(changed);
                     unifiedChanges.forEach(function(storeKey) {
 
