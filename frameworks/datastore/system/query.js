@@ -613,7 +613,6 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
             rightJoinKey: this.get('rightJoinKey'),
             joinType: this.get('joinType')
         });
-        store.writeStatus(record.get('storeKey'), SC.Record.READY_CLEAN);
         return record.get('storeKey');
     },
 

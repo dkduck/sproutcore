@@ -56,3 +56,5 @@ SC.JoinRecord = SC.Record.extend({
     }
 
 });
+
+SC.JoinRecord.doNotCommit = YES;
