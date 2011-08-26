@@ -375,13 +375,25 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   destroy: function() {
     if (!this.get('isDestroyed')) {
       var parents = this.getPath('query.scope'),
-          nestedRecordArrays = this.get('nestedRecordArrays');
+          nestedRecordArrays = this.get('nestedRecordArrays'),
+          storeKeys = this.get('storeKeys'),
+          len = storeKeys ? storeKeys.get('length') : 0;
 
       if (parents) parents.forEach(function(scopeItem) {
         scopeItem.source.recordArrayWillDestroy(this);
       }, this);
       if (nestedRecordArrays) nestedRecordArrays.invoke('destroy');
       this.get('store').recordArrayWillDestroy(this);
+      if (this._scra_records) this._scra_records.length = 0;
+      if (storeKeys) {
+          storeKeys.removeArrayObservers({
+              target: this,
+              willChange: this.arrayContentWillChange,
+              didChange: this._storeKeysContentDidChange
+          }),
+          this.arrayContentWillChange(0, len, 0);
+          this.arrayContentDidChange(0, len, 0);
+      }
     }
     return sc_super();
   },
