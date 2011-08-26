@@ -10,6 +10,8 @@ SC.JoinRecord = SC.Record.extend({
     leftJoinKey: null,
     rightJoinKey: null,
 
+    preferredRecord: 'leftRecord',
+
     joinType: null,
 
     leftStoreKey: function() {
@@ -28,19 +30,20 @@ SC.JoinRecord = SC.Record.extend({
     }.observes('*leftRecord.*', '*rightRecord.*'),
 
     unknownProperty: function(key, value) {
-        var leftRecord = this.get('leftRecord'),
-            rightRecord = this.get('rightRecord'),
-            leftValue = leftRecord ? leftRecord.get(key) : undefined,
-            rightValue = rightRecord ? rightRecord.get(key) : undefined;
+        var preferredRecord = this.get('preferredRecord'),
+            primaryRecord = this.get(preferredRecord),
+            secondaryRecord = this.get(preferredRecord === 'leftRecord' ? 'rightRecord' : 'leftRecord'),
+            primaryValue = primaryRecord ? primaryRecord.get(key) : undefined,
+            secondaryValue = secondaryRecord ? secondaryRecord.get(key) : undefined;
 
         if (value !== undefined) {
-            if (leftValue !== undefined) {
-                leftRecord.set(key, value);
-            } else if (rightValue !== undefined) {
-                rightRecord.set(key, value);
+            if (primaryValue !== undefined) {
+                primaryRecord.set(key, value);
+            } else if (secondaryValue !== undefined) {
+                secondaryRecord.set(key, value);
             }
         }
-        return leftValue !== undefined ? leftValue : rightValue;
+        return primaryValue !== undefined ? primaryValue : secondaryValue;
     },
 
     recordsMatch: function() {
