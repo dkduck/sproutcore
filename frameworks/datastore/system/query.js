@@ -493,7 +493,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
 
                         if (!rightChangeset.added.contains(rightStoreKey)) return;
                         joinRecords = recordArray.filter(function(record) {
-                            return record.get('leftRecord').get(leftKey) === rightRecord.get(rightKey) && record(get('rightRecord')) === null;
+                            return record.get('leftRecord').get(leftKey) === rightRecord.get(rightKey) && record.get('rightRecord') === null;
                         }, this);
                         if (joinRecords.length > 0) {
                             joinRecords.forEach(function(joinRecord) {
