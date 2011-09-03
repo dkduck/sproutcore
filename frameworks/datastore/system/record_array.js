@@ -636,19 +636,17 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
           store,
           parents,
           storeKeys,
-          changed,
           queryResult,
-          newStoreKeys,
-          relevantStoreKeys;
+          newStoreKeys;
 
+      if (!this.get('needsFlush') && !_flush) return this;
       if (!this.get('enabled')) return this;
 
       if (this._insideFlush) {
-          this.set('needsFlush', YES);
+//          this.set('needsFlush', YES);
           return this;
       }
 
-      if (!this.get('needsFlush') && !_flush) return this;
       this.set('needsFlush', NO);
 
       query = this.get('query'),
@@ -656,7 +654,8 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       if (!store || !query || query.get('location') !== SC.Query.LOCAL) return this;
 
       this._insideFlush = YES;
-
+SC.Benchmark.start('SC.RecordArray#flush');
+//if (this.query.recordType === CorePanda.ScanInstance) debugger;
       // if this is a nested RecordArray we have to make sure that all parent RecordArrays are flushed
       // before we flush ourselves, so that changes have a chance to bubble up
       parents = this.getPath('query.scope');
@@ -676,9 +675,11 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
 
           var differenceSet = this._findDifferences(storeKeys, newStoreKeys);
           if (differenceSet) {
+SC.Benchmark.start('SC.RecordArray#flush-notify');
               // replace content without triggering the observer, because we do the change notification ourselves here
               this.storeKeys = newStoreKeys;
               this._notifyStoreKeyChanges(storeKeys, newStoreKeys, differenceSet);
+SC.Benchmark.end('SC.RecordArray#flush-notify');
           }
 
           // notify all nested RecordArrays of the changes considered relevant to this RecordArray
@@ -686,6 +687,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
           if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.added, queryResult.deleted, queryResult.updated, this);
 
       }
+SC.Benchmark.end('SC.RecordArray#flush');
 
       this._insideFlush = NO;
       return this;

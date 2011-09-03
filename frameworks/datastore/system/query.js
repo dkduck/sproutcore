@@ -436,7 +436,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
             leftSource, rightSource, leftChangeset, rightChangeset, leftKey, rightKey;
 
         if (this.get('joinType') & SC.Query.JOIN_TYPE_LEFT) {
-
+SC.Benchmark.start('SC.Query#merge-joinquery');
             leftSource = scope[0].source;
             rightSource = scope[1].source;
             leftKey = this.get('leftJoinKey');
@@ -543,9 +543,10 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
                 this._rightHash = null;
 
             }
+SC.Benchmark.end('SC.Query#merge-joinquery');
 
         } else {
-
+SC.Benchmark.start('SC.Query#merge-query');
             if (storeKeys) {
 
                 if (changed) {
@@ -590,7 +591,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
                 storeKeys = [];
                 added = this.getSourceStoreKeys(store);
             }
-
+SC.Benchmark.end('SC.Query#merge-query');
         }
 
         mergeSortKeys = added.concat(updated);
