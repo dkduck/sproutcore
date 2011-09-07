@@ -1050,9 +1050,11 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     // look up in cached records
     if (!records) records = this.records = {}; // load cached records
     ret = records[storeKey];
+    if (ret === NO) return undefined;
     if (ret) return ret;
 
     // not found -- OK, create one then.
+    records[storeKey] = NO;
     recordType = SC.Store.recordTypeFor(storeKey);
     if (!recordType) return null; // not recordType registered, nothing to do
 
