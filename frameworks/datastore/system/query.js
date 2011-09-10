@@ -279,6 +279,8 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
   scope: null,
 
 
+  stealth: NO,
+
   joinType: 0,
   leftJoinKey: null,
   rightJoinKey: null,
@@ -813,7 +815,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
   /** @private
     Properties that need to be copied when cloning the query.
   */
-  copyKeys: ['conditions', 'orderBy', 'recordType', 'recordTypes', 'parameters', 'location', 'scope'],
+  copyKeys: ['conditions', 'orderBy', 'recordType', 'recordTypes', 'parameters', 'location', 'scope', 'stealth'],
   
   /** @private */
   concatenatedProperties: ['copyKeys'],
