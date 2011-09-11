@@ -56,6 +56,8 @@ sc_require('models/record');
 SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   /** @scope SC.RecordArray.prototype */ {
 
+  isRecordArray: YES,
+
   /**
     The store that owns this record array.  All record arrays must have a
     store to function properly.
@@ -528,7 +530,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     };
     changed.updated.addEach(storeKeys);
 
-    this.parentDidBecomeDirty();
+    this.invokeOnce(this.parentDidBecomeDirty);
     return this;
   },
 
@@ -541,8 +543,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     var nestedRecordArrays = this.get('nestedRecordArrays');
 
     this.set('needsFlush', YES);
-    // recursively notify all nested RecordArrays too
-    if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidBecomeDirty');
+    this.flush();
     return this;
   },
 
@@ -595,25 +596,8 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     changed.added.addEach(added);
     changed.deleted.addEach(deleted);
     changed.updated.addEach(updated);
-    return this;
-  },
-
-  /** @private
-    Called by the store to flush the RecordArrays after they have be informed about changes in the store.
-    flush() is only called on the leafs of the query tree because flush() takes care itself of flushing the
-    parents.
-
-    @param {Array} storeKeys that changed in the parent RecordArray
-    @returns {SC.RecordArray} receiver
-  */
-  flushFromLeafs: function() {
-    var nestedRecordArrays = this.get('nestedRecordArrays');
-
-    if (nestedRecordArrays) {
-      nestedRecordArrays.invoke('flushFromLeafs');
-    } else {
-      this.flush();
-    }
+      
+    this.invokeOnce(this.parentDidBecomeDirty);
     return this;
   },
 
@@ -663,7 +647,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       }, this);
 
       if (this._scra_changedStoreKeys || !this._flushed) {
-
+          SC.Benchmark.start('flush');
           this._flushed = YES;
 
           storeKeys = this.get('storeKeys');
@@ -682,7 +666,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
           // notify all nested RecordArrays of the changes considered relevant to this RecordArray
           var nestedRecordArrays = this.get('nestedRecordArrays');
           if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.added, queryResult.deleted, queryResult.updated, this);
-
+          SC.Benchmark.end('flush');
       }
 
       this._insideFlush = NO;
@@ -884,5 +868,5 @@ SC.RecordArray.mixin(/** @scope SC.RecordArray.prototype */{
 
     @type SC.Error
   */
-  NOT_EDITABLE: SC.Error.desc("SC.RecordArray is not editable"),
+  NOT_EDITABLE: SC.Error.desc("SC.RecordArray is not editable")
 });

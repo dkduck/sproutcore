@@ -729,6 +729,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
       myEditables[storeKey] = 0 ; // always make dataHash no longer editable
 
+      this.materializeRecord(storeKey);
       this._notifyRecordPropertyChange(storeKey, NO);
     }
 
@@ -882,32 +883,27 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
 
   _findQuery: function(query, createIfNeeded, refreshIfNew) {
-
-    // lookup the local RecordArray for this query.
     var cache = this._scst_recordArraysByQuery,
         key   = SC.guidFor(query),
         ret, ra ;
+
     if (!cache) cache = this._scst_recordArraysByQuery = {};
     ret = cache[key];
-
-    // if a RecordArray was not found, then create one and also add it to the
-    // list of record arrays to update.
     if (!ret && createIfNeeded) {
-      cache[key] = ret = SC.RecordArray.create({ store: this, query: query });
-
-      ra = this.get('recordArrays');
-      if (!ra) this.set('recordArrays', ra = SC.Set.create());
-      ra.add(ret);
-
-      if (refreshIfNew) this.refreshQuery(query);
+      ret = SC.RecordArray.create({ store: this, query: query });
+      if (query.scope) {
+        ret.registerWithParents();
+      } else if (query.get('location') == SC.Query.LOCAL && !query.get('stealth')) {
+        ra = this.get('recordArrays');
+        if (!ra) this.set('recordArrays', ra = SC.Set.create());
+        ra.add(ret);
+      }
+      cache[key] = ret;
     }
-
-    this.flush();
     return ret ;
   },
 
   _findRecord: function(recordType, id) {
-
     var storeKey ;
 
     // if a record instance is passed, simply use the storeKey.  This allows
@@ -919,10 +915,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     // otherwise, lookup the storeKey for the passed id.  look in subclasses
     // as well.
     } else storeKey = id ? recordType.storeKeyFor(id) : null;
-
-    if (storeKey && (this.readStatus(storeKey) === SC.Record.EMPTY)) {
-      storeKey = this.retrieveRecord(recordType, id);
-    }
 
     // now we have the storeKey, materialize the record and return it.
     return storeKey ? this.materializeRecord(storeKey) : null ;
@@ -987,12 +979,8 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
   */
   _notifyRecordArrays: function(storeKeys, recordTypes) {
     var recordArrays = this.get('recordArrays');
-    if (!recordArrays) return this;
 
-    // first inform all RecordArrays about the changes ...
-    recordArrays.invoke('storeDidChangeStoreKeys', storeKeys, recordTypes);
-    // and then flush them all
-    recordArrays.invoke('flushFromLeafs');
+    if (recordArrays) recordArrays.invoke('storeDidChangeStoreKeys', storeKeys, recordTypes);
     return this ;
   },
 
@@ -1204,6 +1192,10 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
       that.unloadRecord(null, null, storeKey, newStatus);
     });
 
+    // remove all references to the record and destroy properly
+    var changelog = this.changelog;
+    this._cleanUpRecord(recordType, id, storeKey);
+    if (changelog && changelog.length > 0) changelog.removeObject(storeKey);
     return this ;
   },
 
@@ -1314,6 +1306,8 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
       that.destroyRecord(null, null, storeKey);
     });
 
+    // delete references to record and destroy properly
+    this._cleanUpRecord(recordType, id, storeKey);
     return this ;
   },
 
@@ -1357,6 +1351,22 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     }
     return this ;
   },
+
+  /*
+    Deletes record from cache and calls SC.Object destroy on it
+   */
+  _cleanUpRecord: function(recordType, id, storeKey) {
+    var records = this.records,
+        record;
+
+    if (storeKey === undefined) storeKey = recordType.storeKeyFor(id);
+    record = records ? records[storeKey] : null;
+    if (record) {
+      delete records[storeKey];
+      SC.Object.prototype.destroy.call(record);
+    }
+  },
+
 
   /**
     register a Child Record to the parent
@@ -2150,15 +2160,11 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     if (dataHash) this.writeDataHash(storeKey, dataHash, status) ;
     if (newId) SC.Store.replaceIdFor(storeKey, newId);
 
+    var record = this.materializeRecord(storeKey);
+
     statusOnly = dataHash || newId ? NO : YES;
     this.dataHashDidChange(storeKey, null, statusOnly);
 
-    // Force record to refresh its cached properties based on store key
-    var record = this.materializeRecord(storeKey);
-    if (record != null) {
-      record.notifyPropertyChange('status');
-    }
-    //update callbacks
     this._retreiveCallbackForStoreKey(storeKey);
 
     return this ;
@@ -2258,6 +2264,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
       if(dataHash===undefined) this.writeStatus(storeKey, status) ;
       else this.writeDataHash(storeKey, dataHash, status) ;
 
+      this.materializeRecord(storeKey);
       this.dataHashDidChange(storeKey);
 
       return storeKey;
