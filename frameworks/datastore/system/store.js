@@ -891,7 +891,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     ret = cache[key];
     if (!ret && createIfNeeded) {
       ret = SC.RecordArray.create({ store: this, query: query });
-      if (query.scope) {
+      if (query.scope && !query.get('stealth')) {
         ret.registerWithParents();
       } else if (query.get('location') == SC.Query.LOCAL && !query.get('stealth')) {
         ra = this.get('recordArrays');
