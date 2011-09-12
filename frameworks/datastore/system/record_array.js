@@ -647,7 +647,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       }, this);
 
       if (this._scra_changedStoreKeys || !this._flushed) {
-          SC.Benchmark.start('flush');
           this._flushed = YES;
 
           storeKeys = this.get('storeKeys');
@@ -666,7 +665,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
           // notify all nested RecordArrays of the changes considered relevant to this RecordArray
           var nestedRecordArrays = this.get('nestedRecordArrays');
           if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.added, queryResult.deleted, queryResult.updated, this);
-          SC.Benchmark.end('flush');
       }
 
       this._insideFlush = NO;
