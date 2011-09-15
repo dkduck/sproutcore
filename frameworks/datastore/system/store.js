@@ -1110,6 +1110,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     this.writeDataHash(storeKey, (dataHash ? dataHash : {}), K.READY_NEW);
 
     SC.Store.replaceRecordTypeFor(storeKey, recordType);
+    ret = this.materializeRecord(storeKey);
     this.dataHashDidChange(storeKey);
 
     // Record is now in a committable state -- add storeKey to changelog
@@ -1125,7 +1126,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
     // Finally return materialized record, after we propagate the status to
     // any aggregrate records.
-    ret = this.materializeRecord(storeKey);
     if (ret) ret.propagateToAggregates();
     return ret;
   },
