@@ -608,23 +608,23 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
         records              = changes.records,
         propertyForStoreKeys = changes.propertyForStoreKeys,
         recordTypes = SC.CoreSet.create(),
-        rec, recordType, statusOnly, idx, len, storeKey, keys;
+        rec, recordType, statusOnly, len, keys, status;
 
     storeKeys.forEach(function(storeKey) {
-      if (records.contains(storeKey)) {
-        statusOnly = hasDataChanges.contains(storeKey) ? NO : YES;
-        rec = this.records[storeKey];
-        keys = propertyForStoreKeys ? propertyForStoreKeys[storeKey] : null;
+      rec = this.materializeRecord(storeKey);
+      statusOnly = hasDataChanges.contains(storeKey) ? NO : YES;
+      keys = propertyForStoreKeys ? propertyForStoreKeys[storeKey] : null;
 
-        // Are we invalidating all keys?  If so, don't pass any to
-        // storeDidChangeProperties.
-        if (keys === '*') keys = null;
+      // Are we invalidating all keys?  If so, don't pass any to
+      // storeDidChangeProperties.
+      if (keys === '*') keys = null;
 
-        // remove it so we don't trigger this twice
-        records.remove(storeKey);
+      // remove it so we don't trigger this twice
+      records.remove(storeKey);
 
-        if (rec) rec.storeDidChangeProperties(statusOnly, keys);
-      }
+      rec.storeDidChangeProperties(statusOnly, keys);
+      status = this.peekStatus(storeKey);
+      if ((status & SC.Record.DESTROYED) || (status & SC.Record.EMPTY)) this._cleanUpRecord(null, null, storeKey);
 
       recordType = SC.Store.recordTypeFor(storeKey);
       recordTypes.add(recordType);
@@ -729,7 +729,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
       myEditables[storeKey] = 0 ; // always make dataHash no longer editable
 
-      this.materializeRecord(storeKey);
       this._notifyRecordPropertyChange(storeKey, NO);
     }
 
@@ -1110,7 +1109,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     this.writeDataHash(storeKey, (dataHash ? dataHash : {}), K.READY_NEW);
 
     SC.Store.replaceRecordTypeFor(storeKey, recordType);
-    ret = this.materializeRecord(storeKey);
     this.dataHashDidChange(storeKey);
 
     // Record is now in a committable state -- add storeKey to changelog
@@ -1126,6 +1124,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
     // Finally return materialized record, after we propagate the status to
     // any aggregrate records.
+    ret = this.materializeRecord(storeKey);
     if (ret) ret.propagateToAggregates();
     return ret;
   },
@@ -1194,7 +1193,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
     // remove all references to the record and destroy properly
     var changelog = this.changelog;
-    this._cleanUpRecord(recordType, id, storeKey);
     if (changelog && changelog.length > 0) changelog.removeObject(storeKey);
     return this ;
   },
@@ -1306,8 +1304,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
       that.destroyRecord(null, null, storeKey);
     });
 
-    // delete references to record and destroy properly
-    this._cleanUpRecord(recordType, id, storeKey);
     return this ;
   },
 
@@ -2160,8 +2156,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
     if (dataHash) this.writeDataHash(storeKey, dataHash, status) ;
     if (newId) SC.Store.replaceIdFor(storeKey, newId);
 
-    var record = this.materializeRecord(storeKey);
-
     statusOnly = dataHash || newId ? NO : YES;
     this.dataHashDidChange(storeKey, null, statusOnly);
 
@@ -2264,7 +2258,6 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
       if(dataHash===undefined) this.writeStatus(storeKey, status) ;
       else this.writeDataHash(storeKey, dataHash, status) ;
 
-      this.materializeRecord(storeKey);
       this.dataHashDidChange(storeKey);
 
       return storeKey;
