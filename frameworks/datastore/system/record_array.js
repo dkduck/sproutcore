@@ -521,14 +521,9 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     if (storeKeys.get('length') === 0) return this;
 
     // ok - we're interested.  mark as dirty and save storeKeys.
-    if (!this._scra_changedStoreKeys) this._scra_changedStoreKeys = {};
-    var changed = this._scra_changedStoreKeys[storeGuid];
-    if (!changed) changed = this._scra_changedStoreKeys[storeGuid] = {
-        added: SC.Set.create(),
-        deleted: SC.Set.create(),
-        updated: SC.Set.create()
-    };
-    changed.updated.addEach(storeKeys);
+    var changed = this._scra_changedStoreKeys;
+    if (!changed) changed = this._scra_changedStoreKeys = SC.CoreSet.create();
+    changed.addEach(storeKeys);
 
     this.invokeOnce(this.parentDidBecomeDirty);
     return this;
@@ -581,22 +576,13 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @param {Array} storeKeys that changed in the parent RecordArray
     @returns {SC.RecordArray} receiver
   */
-  parentDidChangeStoreKeys: function(added, deleted, updated, parent) {
-    var parentGuid = SC.guidFor(parent),
-        changed;
+  parentDidChangeStoreKeys: function(storeKeys, parent) {
+    var changed = this._scra_changedStoreKeys;
 
-    if (added.get('length') + deleted.get('length') + updated.get('length') === 0) return this;
-    if (!this._scra_changedStoreKeys) this._scra_changedStoreKeys = {};
-    changed = this._scra_changedStoreKeys[parentGuid];
-    if (!changed) changed = this._scra_changedStoreKeys[parentGuid] = {
-      added: SC.Set.create(),
-      deleted: SC.Set.create(),
-      updated: SC.Set.create()
-    };
-    changed.added.addEach(added);
-    changed.deleted.addEach(deleted);
-    changed.updated.addEach(updated);
-      
+    if (storeKeys.get('length') === 0) return this;
+    if (!changed) changed = this._scra_changedStoreKeys = SC.CoreSet.create();
+    changed.addEach(storeKeys);
+
     this.invokeOnce(this.parentDidBecomeDirty);
     return this;
   },
@@ -621,7 +607,8 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
           parents,
           storeKeys,
           queryResult,
-          newStoreKeys;
+          newStoreKeys,
+          changed;
 
       if (!this.get('needsFlush') && !_flush) return this;
       if (!this.get('enabled')) return this;
@@ -646,13 +633,14 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
           scopeItem.source.flush();
       }, this);
 
-      if (this._scra_changedStoreKeys || !this._flushed) {
+      changed = this._scra_changedStoreKeys;
+      if (changed || !this._flushed) {
           this._flushed = YES;
 
           storeKeys = this.get('storeKeys');
 
-          queryResult = query.merge(_flush ? null : storeKeys, this._scra_changedStoreKeys, this);
-          this._scra_changedStoreKeys = null;
+          queryResult = query.merge(_flush ? null : storeKeys, changed, this);
+          if (changed) changed.clear();
           newStoreKeys = queryResult.storeKeys;
 
           var differenceSet = this._findDifferences(storeKeys, newStoreKeys);
@@ -664,7 +652,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
 
           // notify all nested RecordArrays of the changes considered relevant to this RecordArray
           var nestedRecordArrays = this.get('nestedRecordArrays');
-          if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.added, queryResult.deleted, queryResult.updated, this);
+          if (nestedRecordArrays) nestedRecordArrays.invoke('parentDidChangeStoreKeys', queryResult.changed, this);
       }
 
       this._insideFlush = NO;

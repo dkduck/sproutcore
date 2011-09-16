@@ -429,206 +429,59 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
             store = recordArray.get('store'),
             K = SC.Record,
             copied = NO,
-            unifiedChanges,
-            mergeSortKeys = [],
-            added = [],
-            deleted = [],
-            updated = [],
-            scope = this.get('scope'), workingRecords,
-            leftSource, rightSource, leftChangeset, rightChangeset, leftKey, rightKey;
+            addedOrUpdated = [],
+            deleted = [];
 
-        if (this.get('joinType') & SC.Query.JOIN_TYPE_LEFT) {
+        if (storeKeys) {
 
-            leftSource = scope[0].source;
-            rightSource = scope[1].source;
-            leftKey = this.get('leftJoinKey');
-            rightKey = this.get('rightJoinKey');
+            if (changed) {
+                changed.forEach(function(storeKey) {
 
-            if (storeKeys) {
-
-                leftChangeset = changed[scope[0].guid];
-                rightChangeset = changed[scope[1].guid];
-                storeKeys = SC.copy(storeKeys);
-
-                // deletions of left records -> push to deleted
-                // deletions of right records -> clear right record from join records and push to updated\
-                // left or right record updated -> check if join record still matches, push to updated if it does, to deleted if not
-                recordArray.forEach(function(record) {
-                    var storeKey = record.get('storeKey'),
-                        leftStoreKey = record.get('leftStoreKey'),
-                        rightStoreKey = record.get('rightStoreKey');
-
-                    if (leftChangeset && leftChangeset.deleted.contains(leftStoreKey)) {
-                        deleted.push(storeKey);
-                    } else if (rightChangeset && rightChangeset.deleted.contains(rightStoreKey)) {
-                        record.set('rightRecord', null);
-                        updated.push(storeKey);
-                    } else if ((leftChangeset && leftChangeset.updated.contains(leftStoreKey)) ||
-                        (rightChangeset && rightChangeset.updated.contains(rightStoreKey))) {
-                        record.recordsMatch() ? updated.push(storeKey): deleted.push(storeKey);
-                    }
-                }, this);
-
-                // added left records -> create new join records with all corresponding right records in the right source
-                if (leftChangeset && leftChangeset.added.get('length') > 0) {
-                    leftSource.forEach(function(leftRecord) {
-                        var leftStoreKey = leftRecord.get('storeKey'),
-                            rightRecords;
-
-                        if (!leftChangeset.added.contains(leftStoreKey)) return;
-                        rightRecords = rightSource.filterProperty(rightKey, leftRecord.get(leftKey));
-                        rightRecords.forEach(function(rightRecord) {
-                            added.push(this._createJoinRecord(leftRecord, rightRecord, store));
-                        }, this);
-                        if (rightRecords.length === 0) {
-                            added.push(this._createJoinRecord(leftRecord, null, store));
-                        }
-                    }, this);
-                }
-
-                // added right records -> update existing matching join records with empty right side
-                // or create new join records with corresponding left records except the ones just added
-                if (rightChangeset && rightChangeset.added.get('length') > 0) {
-                    rightSource.forEach(function(rightRecord) {
-                        var rightStoreKey = rightRecord.get('storeKey'),
-                            leftRecords, joinRecords;
-
-                        if (!rightChangeset.added.contains(rightStoreKey)) return;
-                        joinRecords = recordArray.filter(function(record) {
-                            return record.get('leftRecord').get(leftKey) === rightRecord.get(rightKey) && record.get('rightRecord') === null;
-                        }, this);
-                        if (joinRecords.length > 0) {
-                            joinRecords.forEach(function(joinRecord) {
-                                joinRecord.set('rightRecord', rightRecord);
-                                updated.push(joinRecord.get('storeKey'));
-                            }, this);
-                        } else {
-                            leftSource.forEach(function(leftRecord) {
-                                if ((leftRecord.get(leftKey) === rightRecord.get(rightKey))
-                                    && (!leftChangeset || !leftChangeset.added.contains(leftRecord.get('storeKey')))) {
-                                    added.push(this._createJoinRecord(leftRecord, rightRecord, store));
-                                }
-                            }, this);
-                        }
-                    }, this);
-                }
-
-                // clear deleted and updated storeKeys. updated records will be resorted and merged in later again
-                storeKeys.removeObjects(deleted.concat(updated));
-
-                // Unload deleted records
-                if (deleted.length > 0) store.unloadRecords(null, null, deleted, K.READY_CLEAN);
-
-            } else {
-
-                storeKeys = [];
-
-                // add all left records with corresponding right records (or empty right record if none exists)
-                this._rightHash = {};
-                rightSource.forEach(function(rightRecord) {
-                    var keyValue = rightRecord.get(rightKey);
-                    if (!this._rightHash[keyValue]) this._rightHash[keyValue] = [];
-                    this._rightHash[keyValue].push(rightRecord)
-                }, this);
-                leftSource.forEach(function(leftRecord) {
-                    var rightRecords;
-
-                    rightRecords = this._rightHash[leftRecord.get(leftKey)];
-                    if (rightRecords) {
-                        rightRecords.forEach(function(rightRecord) {
-                            added.push(this._createJoinRecord(leftRecord, rightRecord, store));
-                        }, this);
+                    // get record - do not include EMPTY or DESTROYED records
+                    status = store.peekStatus(storeKey);
+                    if (!(status & K.EMPTY) && !((status & K.DESTROYED) || (status === K.BUSY_DESTROYING))) {
+                        record = store.materializeRecord(storeKey);
+                        included = !!(record && this.contains(record));
                     } else {
-                        added.push(this._createJoinRecord(leftRecord, null, store));
+                        included = NO ;
                     }
-                }, this);
-                this._rightHash = null;
 
+                    if (included) {
+                        if (storeKeys.indexOf(storeKey) >= 0) {
+                            if (!copied) {
+                                storeKeys = storeKeys.copy();
+                                copied = YES;
+                            }
+                            storeKeys.removeObject(storeKey);
+                        }
+                        addedOrUpdated.push(storeKey);
+                    } else {
+                        if (storeKeys.indexOf(storeKey) >= 0) {
+                            if (!copied) {
+                                storeKeys = storeKeys.copy();
+                                copied = YES;
+                            }
+                            storeKeys.removeObject(storeKey);
+                            deleted.push(storeKey);
+                        }
+                    }
+
+                }, this);
             }
 
         } else {
-
-            if (storeKeys) {
-
-                if (changed) {
-                    unifiedChanges = this._unifyChanges(changed);
-                    unifiedChanges.forEach(function(storeKey) {
-
-                        // get record - do not include EMPTY or DESTROYED records
-                        status = store.peekStatus(storeKey);
-                        if (!(status & K.EMPTY) && !((status & K.DESTROYED) || (status === K.BUSY_DESTROYING))) {
-                            record = store.materializeRecord(storeKey);
-                            included = !!(record && this.contains(record));
-                        } else {
-                            included = NO ;
-                        }
-
-                        if (included) {
-                            if (storeKeys.indexOf(storeKey) >= 0) {
-                                if (!copied) {
-                                    storeKeys = storeKeys.copy();
-                                    copied = YES;
-                                }
-                                storeKeys.removeObject(storeKey);
-                                updated.push(storeKey);
-                            } else {
-                                added.push(storeKey);
-                            }
-                        } else {
-                            if (storeKeys.indexOf(storeKey) >= 0) {
-                                if (!copied) {
-                                    storeKeys = storeKeys.copy();
-                                    copied = YES;
-                                }
-                                storeKeys.removeObject(storeKey);
-                                deleted.push(storeKey);
-                            }
-                        }
-
-                    }, this);
-                }
-
-            } else {
-                storeKeys = [];
-                added = this.getSourceStoreKeys(store);
-            }
-
+            storeKeys = [];
+            addedOrUpdated = this.getSourceStoreKeys(store);
         }
 
-        mergeSortKeys = added.concat(updated);
-        if (mergeSortKeys.length > 0) {
+        if (addedOrUpdated.length > 0) {
             // First sort the new storeKeys
-            mergeSortKeys = SC.Query.orderStoreKeys(mergeSortKeys, this, store);
+            addedOrUpdated = SC.Query.orderStoreKeys(addedOrUpdated, this, store);
             // then merge them with the existing storeKeys
-            storeKeys = SC.Query.mergeStoreKeys(storeKeys, mergeSortKeys, this, store);
+            storeKeys = SC.Query.mergeStoreKeys(storeKeys, addedOrUpdated, this, store);
         }
 
-        return {storeKeys: storeKeys, added: added, deleted: deleted, updated: updated};
-    },
-
-    _createJoinRecord: function(leftRecord, rightRecord, store) {
-        var record = store.createRecord(this.get('recordType'));
-        record.set({
-            leftRecord: leftRecord,
-            rightRecord: rightRecord,
-            leftJoinKey: this.get('leftJoinKey'),
-            rightJoinKey: this.get('rightJoinKey'),
-            joinType: this.get('joinType')
-        });
-        return record.get('storeKey');
-    },
-
-    _unifyChanges: function(change) {
-        var result = SC.Set.create(),
-            changeSet, key;
-
-        for (key in change) {
-            changeSet = change[key];
-            result.addEach(changeSet.added);
-            result.addEach(changeSet.deleted);
-            result.addEach(changeSet.updated);
-        }
-        return result;
+        return {storeKeys: storeKeys, changed: addedOrUpdated.concat(deleted)};
     },
 
   /**
