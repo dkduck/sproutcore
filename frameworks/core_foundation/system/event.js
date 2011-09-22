@@ -144,7 +144,10 @@ SC.mixin(SC.Event, /** @scope SC.Event */ {
 
     if (SC.browser.safari) {
       // Safari 5.0.1 and up
-      if (version >= 533.17) {
+      if (version >= 534.48) {
+        deltaMultiplier = 0.4;
+        didChange = YES;
+      } else if (version >= 533.17) {
         deltaMultiplier = 0.004;
         didChange = YES;
       } else if (version < 533) {
