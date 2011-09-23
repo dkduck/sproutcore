@@ -281,10 +281,6 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
 
   stealth: NO,
 
-  joinType: 0,
-  leftJoinKey: null,
-  rightJoinKey: null,
-  
   /**
     Returns `YES` if query location is Remote.  This is sometimes more 
     convenient than checking the location.
@@ -645,21 +641,6 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
     return newQuery.set('scope', scope).freeze();
   },
 
-    leftJoin: function(recordArrayLeft, recordArrayRight, leftKey, rightKey) {
-        var newQuery = this.copy(),
-            scope = this.get('scope') || [];
-        scope.push(
-            {guid: SC.guidFor(recordArrayLeft), source: recordArrayLeft, operator: SC.Query.RELATIONAL_OPERATOR_UNION},
-            {guid: SC.guidFor(recordArrayRight), source: recordArrayRight, operator: SC.Query.RELATIONAL_OPERATOR_UNION}
-        );
-        newQuery.set('scope', scope);
-        newQuery.set({
-            joinType: SC.Query.JOIN_TYPE_LEFT,
-            leftJoinKey: leftKey,
-            rightJoinKey: rightKey
-        });
-        return newQuery;
-    },
 
   // ..........................................................
   // PRIVATE SUPPORT
@@ -1431,8 +1412,6 @@ SC.Query.mixin( /** @scope SC.Query */ {
 
   RELATIONAL_OPERATOR_UNION: 1,
   RELATIONAL_OPERATOR_DIFFERENCE: 2,
-
-  JOIN_TYPE_LEFT: 1,
 
 
   /**
