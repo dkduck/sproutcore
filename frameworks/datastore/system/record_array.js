@@ -535,8 +535,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
     @returns {SC.RecordArray} receiver
   */
   parentDidBecomeDirty: function() {
-    var nestedRecordArrays = this.get('nestedRecordArrays');
-
     this.set('needsFlush', YES);
     this.flush();
     return this;
@@ -604,7 +602,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   flush: function(_flush) {
       var query,
           store,
-          parents,
           storeKeys,
           queryResult,
           newStoreKeys,
@@ -625,13 +622,6 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
       if (!store || !query || query.get('location') !== SC.Query.LOCAL) return this;
 
       this._insideFlush = YES;
-
-      // if this is a nested RecordArray we have to make sure that all parent RecordArrays are flushed
-      // before we flush ourselves, so that changes have a chance to bubble up
-      parents = this.getPath('query.scope');
-      if (parents) parents.forEach(function(scopeItem) {
-          scopeItem.source.flush();
-      }, this);
 
       changed = this._scra_changedStoreKeys;
       if (changed || !this._flushed) {
