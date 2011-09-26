@@ -349,8 +349,7 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
     } else {
       var expandedStartIndex = this.expandChildIndex(start);
       if (oldlen === newlen) {
-        amt = this.expandChildIndex(start+amt);
-        amt = amt - expandedStartIndex ;
+        amt = this.expandChildIndex(start + amt) - expandedStartIndex;
         delta = 0 ;
 
       } else {
@@ -360,7 +359,7 @@ SC.TreeItemObserver = SC.Object.extend(SC.Array, SC.CollectionContent, {
 
       var addedCount = amt;
       var removedCount = addedCount - delta;
-      this.arrayContentDidChange(start, removedCount, addedCount);
+      this.arrayContentDidChange(expandedStartIndex, removedCount, addedCount);
     }
   },
 
