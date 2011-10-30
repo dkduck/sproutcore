@@ -110,10 +110,10 @@ SC.Event = function(originalEvent) {
     // this will happen as new Webkit-based browsers are released and we haven't covered them off
     // in our browser detection. It'll scroll too quickly the first time, but we might as well learn
     // and change our handling for the next scroll
-    if (this.wheelDelta > SC.Event.MOUSE_WHEEL_DELTA_LIMIT && !SC.Event._MOUSE_WHEEL_LIMIT_INVALIDATED) {
-      deltaMultiplier = SC.Event.MOUSE_WHEEL_MULTIPLIER = 0.004;
-      SC.Event._MOUSE_WHEEL_LIMIT_INVALIDATED = YES;
-    }
+//    if (this.wheelDelta > SC.Event.MOUSE_WHEEL_DELTA_LIMIT && !SC.Event._MOUSE_WHEEL_LIMIT_INVALIDATED) {
+//      deltaMultiplier = SC.Event.MOUSE_WHEEL_MULTIPLIER = 0.004;
+//      SC.Event._MOUSE_WHEEL_LIMIT_INVALIDATED = YES;
+//    }
 
     this.wheelDelta *= deltaMultiplier;
     this.wheelDeltaX *= deltaMultiplier;
@@ -144,7 +144,7 @@ SC.mixin(SC.Event, /** @scope SC.Event */ {
 
     if (SC.browser.safari) {
       // Safari 5.0.1 and up
-      if (version >= 534.48) {
+      if (version >= 534) {
         deltaMultiplier = 0.4;
         didChange = YES;
       } else if (version >= 533.17) {
@@ -158,6 +158,9 @@ SC.mixin(SC.Event, /** @scope SC.Event */ {
     } else if (SC.browser.mozilla) {
       deltaMultiplier = 10;
       didChange = YES;
+    } else if (SC.browser.chrome) {
+        deltaMultiplier = 0.4;
+        didChange = YES;
     }
 
     if (didChange) { SC.Event._MOUSE_WHEEL_LIMIT_INVALIDATED = YES; }
