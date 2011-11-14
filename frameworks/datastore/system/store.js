@@ -1113,7 +1113,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
     // Record is now in a committable state -- add storeKey to changelog
     changelog = this.changelog;
-    if (!changelog) changelog = SC.Set.create();
+    if (!changelog) changelog = SC.CoreSet.create();
     changelog.add(storeKey);
     this.changelog = changelog;
 
@@ -1289,7 +1289,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
     // add/remove change log
     changelog = this.changelog;
-    if (!changelog) changelog = this.changelog = SC.Set.create();
+    if (!changelog) changelog = this.changelog = SC.CoreSet.create();
 
     ((status & K.DIRTY) ? changelog.add(storeKey) : changelog.remove(storeKey));
     this.changelog=changelog;
@@ -1463,7 +1463,7 @@ SC.Store = SC.Object.extend( /** @scope SC.Store.prototype */ {
 
     // record in changelog
     changelog = this.changelog ;
-    if (!changelog) changelog = this.changelog = SC.Set.create() ;
+    if (!changelog) changelog = this.changelog = SC.CoreSet.create() ;
     changelog.add(storeKey);
     this.changelog = changelog;
 

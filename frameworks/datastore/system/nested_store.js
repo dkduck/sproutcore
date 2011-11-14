@@ -162,7 +162,7 @@ SC.NestedStore = SC.Store.extend(
           this._notifyRecordPropertyChange(parseInt(storeKey, 10));
         }
       }
-    }   
+    }
     
     this.reset();
     this.flush();
@@ -416,7 +416,7 @@ SC.NestedStore = SC.Store.extend(
     }
 
     var changes = this.chainedChanges;
-    if (!changes) changes = this.chainedChanges = SC.Set.create();
+    if (!changes) changes = this.chainedChanges = SC.CoreSet.create();
     
     for(idx=0;idx<len;idx++) {
       if (isArray) storeKey = storeKeys[idx];
@@ -444,7 +444,7 @@ SC.NestedStore = SC.Store.extend(
     var pstore = this.get('parentStore'), psRevisions = pstore.revisions, i;
     var myLocks = this.locks, myChanges = this.chainedChanges,len,storeKey;
     if (!myLocks) myLocks = this.locks = [];
-    if (!myChanges) myChanges = this.chainedChanges = SC.Set.create();
+    if (!myChanges) myChanges = this.chainedChanges = SC.CoreSet.create();
 
     len = changes.length ;
     for(i=0;i<len;i++) {

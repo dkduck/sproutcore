@@ -384,7 +384,7 @@ SC.Query = SC.Object.extend(SC.Copyable, SC.Freezable,
         storeKeys = [],
         recordType, rec, status;
 
-    sourceKeys = SC.IndexSet.create();
+    sourceKeys = SC.CoreSet.create();
 
      if (recordType = this.get('expandedRecordTypes')) {
       recordType.forEach(function(rt) {

@@ -563,7 +563,7 @@ SC.RecordArray = SC.Object.extend(SC.Enumerable, SC.Array,
   registerNestedRecordArray: function(child) {
     var nestedRecordArrays = this.get('nestedRecordArrays');
 
-    if (!nestedRecordArrays) this.set('nestedRecordArrays', nestedRecordArrays = SC.Set.create());
+    if (!nestedRecordArrays) this.set('nestedRecordArrays', nestedRecordArrays = SC.CoreSet.create());
     nestedRecordArrays.add(child);
     return this;
   },
