@@ -481,14 +481,13 @@ SC.Drag = SC.Object.extend(
         op = op & target.computeDragOperations(this, evt, op) ;
       } else op = SC.DRAG_NONE ; // assume drops AREN'T allowed
       
-      this.allowedDragOperations = op ;
-      
       // if DRAG_NONE, then look for the next parent that is a drop zone
       if (op === SC.DRAG_NONE) target = this._findNextDropTarget(target) ;
     }
-    
+
     // STEP 2: Refocus the drop target if needed
     if (target !== last) {
+      this.allowedDragOperations = op ;
       if (last && last.dragExited) last.dragExited(this, evt) ;
       
       if (target) {
