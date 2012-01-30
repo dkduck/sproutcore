@@ -797,7 +797,7 @@ SC.CollectionView = SC.View.extend(SC.CollectionViewDelegate, SC.CollectionConte
     }
 
     // notify all items changed
-//    this.updateContentRangeObserver();
+    this.updateContentRangeObserver();
     this.contentLengthDidChange();
     this.contentRangeDidChange(content, null, '[]', null);
 
