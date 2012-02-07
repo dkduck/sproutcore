@@ -2904,7 +2904,7 @@ SC.CollectionView = SC.View.extend(SC.CollectionViewDelegate, SC.CollectionConte
     if (dragOp !== SC.DRAG_NONE) {
       if ((this._lastInsertionIndex !== idx) || (this._lastDropOperation !== dropOp)) {
         var itemView = this.itemViewForContentIndex(idx) ;
-        this.showInsertionPoint(itemView, dropOp) ;
+        this.showInsertionPoint(itemView, dropOp, drag) ;
       }
 
       this._lastInsertionIndex = idx ;
