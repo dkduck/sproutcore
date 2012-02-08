@@ -208,21 +208,21 @@ SC.imageQueue = SC.Object.create(/** @scope SC.imageQueue.prototype */ {
     if (entry) {
       // var img = (entry.image = new Image()) ;
       var img = entry.image ;
-      if(!img) return;
+      if (img) {
+        // Using bind here instead of setting onabort/onerror/onload directly
+        // fixes an issue with images having 0 width and height
+        $(img).bind('abort', this._imageDidAbort);
+        $(img).bind('error', this._imageDidError);
+        $(img).bind('load', this._imageDidLoad);
+        img.src = entry.url ;
 
-      // Using bind here instead of setting onabort/onerror/onload directly
-      // fixes an issue with images having 0 width and height
-      $(img).bind('abort', this._imageDidAbort);
-      $(img).bind('error', this._imageDidError);
-      $(img).bind('load', this._imageDidLoad);
-      img.src = entry.url ;
-      
-      // add to loading queue.
-      this._loading.push(entry) ;
-    
-      // increment active requests and start next request until queue is empty
-      // or until load limit is reached.
-      this.incrementProperty('activeRequests');
+        // add to loading queue.
+        this._loading.push(entry) ;
+
+        // increment active requests and start next request until queue is empty
+        // or until load limit is reached.
+        this.incrementProperty('activeRequests');
+      }
       this.loadNextImage();
     } 
   },
