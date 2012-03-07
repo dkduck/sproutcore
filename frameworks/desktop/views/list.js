@@ -163,9 +163,9 @@ SC.ListView = SC.CollectionView.extend(SC.CollectionRowDelegate,
         indexes = del.get('customRowHeightIndexes'), 
         last    = this._sclv_customRowHeightIndexes,
         func    = this._sclv_customRowHeightIndexesContentDidChange;
-        
+
     // nothing to do
-    if ((indexes===last) || (last && last.isEqual(indexes))) return this;
+    if (indexes === last) return this;
 
     // if we were observing the last index set, then remove observer
     if (last && this._sclv_isObservingCustomRowHeightIndexes) {
@@ -177,7 +177,7 @@ SC.ListView = SC.CollectionView.extend(SC.CollectionRowDelegate,
       indexes.addObserver('[]', this, func);
     }
     
-    this._sclv_customRowHeightIndexesContentDidChange();
+    if (!last || !last.isEqual(indexes)) this._sclv_customRowHeightIndexesContentDidChange();
     return this ;
   },
 
