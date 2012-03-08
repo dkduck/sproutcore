@@ -2591,7 +2591,8 @@ SC.CollectionView = SC.View.extend(SC.CollectionViewDelegate, SC.CollectionConte
       // updated to whatever the user clicked.  Instead use
       // mouse down content.
       if (!this.get("selectOnMouseDown")) {
-        dragContent = SC.IndexSet.create(info.contentIndex);
+        if (sel) dragContent = sel.indexSetForSource(content);
+        if (!dragContent || !dragContent.contains(info.contentIndex)) dragContent = SC.IndexSet.create(info.contentIndex);
       } else dragContent = sel ? sel.indexSetForSource(content) : null;
 
       // remove any group indexes.  groups cannot be dragged.
