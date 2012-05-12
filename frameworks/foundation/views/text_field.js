@@ -741,12 +741,9 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
     // our key/mouse down/up handlers (such as the user choosing Select All
     // from a menu).
     SC.Event.add(input, 'select', this, this._textField_selectionDidChange);
-        
-    if(SC.browser.mozilla){
-      // cache references to layer items to improve firefox hack perf
-      this._cacheInputElement = this.$input();
-      this._cachePaddingElement = this.$('.padding');
-    }
+    
+    // handle a "paste" from app menu and context menu
+    SC.Event.add(input, 'input', this, this._textField_inputDidChange);
   },
 
   /**
@@ -761,6 +758,7 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
     SC.Event.remove(input, 'blur',   this, this._textField_fieldDidBlur);
     SC.Event.remove(input, 'select', this, this._textField_selectionDidChange);
     SC.Event.remove(input, 'keypress',  this, this._firefox_dispatch_keypress);
+    SC.Event.remove(input, 'input', this, this._textField_inputDidChange);
   },
   
   /** @private
@@ -835,6 +833,20 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
       SC.run(function() {
         this.fieldValueDidChange(NO);        
       }, this);
+    }
+  },
+  
+  /** @private
+    Context-menu paste does not trigger fieldValueDidChange normally. To do so, we'll capture the
+    input event and avoid duplicating the "fieldValueDidChange" call if it was already issued elsewhere.
+    
+    I welcome someone else to find a better solution to this problem. However, please make sure that it
+    works with pasting via shortcut, context menu and the application menu on *All Browsers*.
+   */
+  _textField_inputDidChange: function() {
+    var timerNotPending = SC.empty(this._fieldValueDidChangeTimer) || !this._fieldValueDidChangeTimer.get('isValid');
+    if(this.get('applyImmediately') && timerNotPending) {
+      this.invokeLater(this.fieldValueDidChange, 10);
     }
   },
 
@@ -1034,11 +1046,10 @@ SC.TextFieldView = SC.FieldView.extend(SC.StaticLayout, SC.Editable,
     }
 
     if (this.get('applyImmediately')) {
-      // We need this invokeLater as we need to get the value of the field
-      // once the event has been processed. I tried with invokeLast , but
-      // I guess the field doesn't repaint until js execution finishes and 
-      // therefore the field value doesn't update if we don't give it a break.
-      this.invokeLater(this.fieldValueDidChange, 1);
+      // This has gone back and forth several times between invokeLater and setTimeout.
+      // Now we're back to invokeLater, please read the code comment above 
+      // this._textField_inputDidChange before changing it again.
+      this._fieldValueDidChangeTimer = this.invokeLater(this.fieldValueDidChange, 10);
     }
 
     return YES;
