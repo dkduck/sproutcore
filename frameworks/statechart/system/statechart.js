@@ -908,7 +908,7 @@ SC.StatechartManager = /** @scope SC.StatechartManager.prototype */{
       this.statechartLogError("can send event %@. statechart is destroyed".fmt(event));
       return;
     }
-    
+
     var statechartHandledEvent = NO,
         eventHandled = NO,
         currentStates = this.get('currentStates').slice(),
