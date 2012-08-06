@@ -143,17 +143,21 @@ SC.mixin(SC.Event, /** @scope SC.Event */ {
         didChange = NO;
 
     if (SC.browser.safari) {
-      // Safari 5.0.1 and up
-      if (version >= 534) {
-        deltaMultiplier = 0.4;
-        didChange = YES;
-      } else if (version >= 533.17) {
-        deltaMultiplier = 0.004;
-        didChange = YES;
-      } else if (version < 533) {
-        // Scrolling in Safari 5.0
+      if (version < 533.17) {
+        // <= 5
         deltaMultiplier = 40;
         didChange = YES;
+      } else if (version < 534) {
+          // > 5 < 5.1
+          deltaMultiplier = 0.004;
+          didChange = YES;
+      } else if (version < 536.25) {
+          // >= 5.1 < 6
+          deltaMultiplier = 0.4;
+          didChange = YES;
+      } else {
+          deltaMultiplier = 40;
+          didChange = YES;
       }
     } else if (SC.browser.mozilla) {
       deltaMultiplier = 10;
