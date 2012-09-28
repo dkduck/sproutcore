@@ -139,35 +139,20 @@ SC.mixin(SC.Event, /** @scope SC.Event */ {
   */
   MOUSE_WHEEL_MULTIPLIER: (function() {
     var deltaMultiplier = 1,
-        version = parseFloat(SC.browser.version),
-        didChange = NO;
+        version = parseFloat(SC.browser.version);
 
     if (SC.browser.safari) {
-      if (version < 533.17) {
-        // <= 5
+      deltaMultiplier = .4;
+      if (version >= 533.17 && version < 534) {
+        deltaMultiplier = .004;
+      } else if (version < 533) {
         deltaMultiplier = 40;
-        didChange = YES;
-      } else if (version < 534) {
-          // > 5 < 5.1
-          deltaMultiplier = 0.004;
-          didChange = YES;
-      } else if (version < 536.25) {
-          // >= 5.1 < 6
-          deltaMultiplier = 0.4;
-          didChange = YES;
-      } else {
-          deltaMultiplier = 40;
-          didChange = YES;
       }
     } else if (SC.browser.mozilla) {
       deltaMultiplier = 10;
-      didChange = YES;
     } else if (SC.browser.chrome) {
-        deltaMultiplier = 0.4;
-        didChange = YES;
+      deltaMultiplier = 0.4;
     }
-
-    if (didChange) { SC.Event._MOUSE_WHEEL_LIMIT_INVALIDATED = YES; }
 
     return deltaMultiplier;
   })(),
