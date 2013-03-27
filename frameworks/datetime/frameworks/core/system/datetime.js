@@ -970,6 +970,7 @@ SC.DateTime.mixin(SC.Comparable,
         }
       }
     } catch (e) {
+        console.log(opts);
       SC.Logger.log('SC.DateTime.createFromString ' + e.toString());
       return null;
     }
