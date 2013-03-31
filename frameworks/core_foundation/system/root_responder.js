@@ -628,8 +628,8 @@ SC.RootResponder = SC.Object.extend(
     this.listenFor(['touchstart', 'touchmove', 'touchend', 'touchcancel'], document);
 
     // handle basic events
-    this.listenFor(['keydown', 'keyup', 'beforedeactivate', 'mousedown', 'mouseup', 'click', 'dblclick', 'mousemove', 'selectstart', 'contextmenu'], document)
-        .listenFor(['resize'], window);
+    this.listenFor(['keydown', 'keyup', 'beforedeactivate', 'mousedown', 'mouseup', 'click', 'dblclick', 'mousemove', 'selectstart', 'contextmenu', 'dragover', 'drop'], document)
+        .listenFor(['resize', 'drop'], window);
 
     if(SC.browser.msie) this.listenFor('focusin focusout'.w(), document);
     else this.listenFor(['focus', 'blur'], window);
@@ -1967,7 +1967,72 @@ SC.RootResponder = SC.Object.extend(
     }, this);
   },
 
-  // these methods are used to prevent unnecessary text-selection in IE,
+
+    dragover: function(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        // We'll record the last positions in all browsers, in case a special pane
+        // or some such UI absolutely needs this information.
+        this._lastDragMoveX = evt.clientX;
+        this._lastDragMoveY = evt.clientY;
+
+        SC.run(function() {
+            // make sure the view gets focus no matter what.  FF is inconsistant
+            // about this.
+            // this.focus();
+            // only do mouse[Moved|Entered|Exited|Dragged] if not in a drag session
+            // drags send their own events, e.g. drag[Moved|Entered|Exited]
+            if (!this._drag) {
+                var lh = this._lastDragHovered || [] , nh = [] , exited, loc, len,
+                    view = this.targetViewForEvent(evt) ;
+
+                // first collect all the responding view starting with the
+                // target view from the given mouse move event
+                while (view && (view !== this)) {
+                    nh.push(view);
+                    view = view.get('nextResponder');
+                }
+
+                // next exit views that are no longer part of the
+                // responding chain
+                for (loc=0, len=lh.length; loc < len; loc++) {
+                    view = lh[loc] ;
+                    exited = view.respondsTo('dragExited');
+                    if (exited && nh.indexOf(view) === -1) {
+                        view.tryToPerform('dragExited', evt);
+                    }
+                }
+
+                // finally, either perform mouse moved or mouse entered depending on
+                // whether a responding view was or was not part of the last
+                // hovered views
+                for (loc=0, len=nh.length; loc < len; loc++) {
+                    view = nh[loc];
+                    if (lh.indexOf(view) !== -1) {
+                        view.tryToPerform('dragMoved', evt);
+                    } else {
+                        view.tryToPerform('dragEntered', evt);
+                    }
+                }
+
+                // Keep track of the view that were last hovered
+                this._lastDragHovered = nh;
+            }
+        }, this);
+    },
+
+    drop: function(evt) {
+        evt.stopPropagation();
+        evt.preventDefault();
+        var view = this.targetViewForEvent(evt) ;
+        view = this.sendEvent('drop', evt, view) ;
+        var ret = view ? evt.hasCustomEventHandling : YES;
+        return ret;
+    },
+
+
+
+        // these methods are used to prevent unnecessary text-selection in IE,
   // there could be some more work to improve this behavior and make it
   // a bit more useful; right now it's just to prevent bugs when dragging
   // and dropping.
