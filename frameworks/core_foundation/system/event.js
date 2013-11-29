@@ -149,6 +149,8 @@ SC.mixin(SC.Event, /** @scope SC.Event */ {
         deltaMultiplier = 40;
       } else if (version >= 536.25 && version < 536.26) {
         deltaMultiplier = 40;
+      } else if (version >= 537.71) {
+          deltaMultiplier = 40;
       }
     } else if (SC.browser.mozilla) {
       deltaMultiplier = 10;
